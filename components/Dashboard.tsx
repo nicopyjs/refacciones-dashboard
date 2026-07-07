@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import type { Week } from "@/lib/parseSchedule";
 import type { Comment } from "@/lib/comments";
 import CommentsPanel from "./CommentsPanel";
+import TopNav from "./TopNav";
 import "../app/dashboard.css";
 
 const MONTH_ES = [
@@ -179,6 +180,7 @@ export default function Dashboard({
     return (
       <div className="viz-root">
         <div className="wrap">
+          <TopNav active="calendario" />
           <header className="page-head">
             <h1>Calendario de Refacciones — RCT Operativo</h1>
             <p className="sub">No se pudieron cargar los datos</p>
@@ -232,6 +234,7 @@ export default function Dashboard({
   return (
     <div className="viz-root">
       <div className="wrap">
+        <TopNav active="calendario" />
         <header className="page-head">
           <h1>Calendario de Refacciones — RCT Operativo</h1>
           <p className="sub">Asignación diaria de tareas por colaborador y obra en curso</p>
