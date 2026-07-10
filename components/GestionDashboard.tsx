@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ObraEntrega, ObraEspecificacion } from "@/lib/parseRefacciones";
 import TopNav from "./TopNav";
 import "../app/dashboard.css";
@@ -49,8 +50,15 @@ export default function GestionDashboard({
   generatedAt: string;
   error: string | null;
 }) {
+  const router = useRouter();
   const [obraSearch, setObraSearch] = useState("");
   const [specSearch, setSpecSearch] = useState("");
+
+  async function logout() {
+    await fetch("/api/auth", { method: "DELETE" });
+    router.push("/");
+    router.refresh();
+  }
 
   const stats = useMemo(() => {
     const total = obras.length;
@@ -155,6 +163,10 @@ export default function GestionDashboard({
             </span>
             <span className="dot" />
             <span>Actualizado en cada visita · última lectura {new Date(generatedAt).toLocaleString("es-CL")}</span>
+            <span className="dot" />
+            <button type="button" onClick={logout} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", font: "inherit", padding: 0 }}>
+              Cerrar sesión
+            </button>
           </div>
         </header>
 

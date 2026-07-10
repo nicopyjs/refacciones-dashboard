@@ -16,7 +16,7 @@ export default function LoginForm() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/observaciones-auth", {
+      const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -26,7 +26,7 @@ export default function LoginForm() {
         setError(data.error || "No se pudo iniciar sesión.");
         return;
       }
-      const next = searchParams.get("next") || "/observaciones";
+      const next = searchParams.get("next") || "/gestion";
       router.push(next);
       router.refresh();
     } finally {
@@ -38,8 +38,8 @@ export default function LoginForm() {
     <div className="viz-root">
       <div className="wrap" style={{ maxWidth: 380, paddingTop: 80 }}>
         <header className="page-head">
-          <h1>Seguimiento de Observaciones</h1>
-          <p className="sub">Ingresa la contraseña para ver esta página.</p>
+          <h1>RCT Operativo</h1>
+          <p className="sub">Ingresa la contraseña para ver esta sección.</p>
         </header>
         <form className="comments-form" style={{ marginTop: 20, flexDirection: "column", alignItems: "stretch" }} onSubmit={submit}>
           <input

@@ -4,7 +4,7 @@ import { SESSION_COOKIE } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const password = body?.password;
-  const expected = process.env.OBSERVACIONES_PASSWORD;
+  const expected = process.env.DASHBOARD_PASSWORD;
   const secret = process.env.AUTH_SECRET;
 
   if (!expected || !secret) {

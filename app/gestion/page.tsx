@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
+import { SESSION_COOKIE, isValidSessionValue } from "@/lib/auth";
 import { getRefaccionesData } from "@/lib/parseRefacciones";
 import GestionDashboard from "@/components/GestionDashboard";
 
@@ -11,6 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function GestionPage() {
+  const cookieStore = await cookies();
+  if (!isValidSessionValue(cookieStore.get(SESSION_COOKIE)?.value)) {
+    redirect("/login?next=/gestion");
+  }
+
   try {
     const { obras, especificaciones } = await getRefaccionesData();
     return (

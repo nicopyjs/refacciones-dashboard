@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function ObservacionesPage() {
   const cookieStore = await cookies();
   if (!isValidSessionValue(cookieStore.get(SESSION_COOKIE)?.value)) {
-    redirect("/observaciones/login");
+    redirect("/login?next=/observaciones");
   }
 
   try {

@@ -54,8 +54,8 @@ export default function ObservacionesDashboard({
   const [onlyAtrasadas, setOnlyAtrasadas] = useState(false);
 
   async function logout() {
-    await fetch("/api/observaciones-auth", { method: "DELETE" });
-    router.push("/observaciones/login");
+    await fetch("/api/auth", { method: "DELETE" });
+    router.push("/");
     router.refresh();
   }
 

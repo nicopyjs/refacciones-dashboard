@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import LoginForm from "@/components/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Ingresar — Seguimiento de Observaciones",
+  title: "Ingresar — RCT Operativo",
 };
 
 export default function LoginPage() {
