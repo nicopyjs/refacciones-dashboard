@@ -229,6 +229,7 @@ td.day-col.today-col { background: color-mix(in srgb, var(--accent) 8%, transpar
 .status-chip.good { background: var(--status-good); }
 .status-chip.warning { background: var(--status-warning); color: #141414; }
 .status-chip.critical { background: var(--status-critical); }
+.status-chip.info { background: var(--accent); }
 .status-chip.muted { background: var(--muted); }
 
 .status-bar-list .bar-row { grid-template-columns: 150px 1fr 34px; }
