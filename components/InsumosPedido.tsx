@@ -8,6 +8,7 @@ import "../app/dashboard.css";
 import "../app/insumos/insumos.css";
 
 const DESTINATARIO = "adquisiciones@nebchile.cl";
+const COPIA = ["gerencia@nebchile.cl", "refacciones@nebchile.cl"];
 const DIAS_HABILES_ENTREGA = 10;
 
 function addBusinessDays(from: Date, n: number): Date {
@@ -132,10 +133,12 @@ export default function InsumosPedido({
   }
 
   function mailtoUrl(): string {
-    return `mailto:${DESTINATARIO}?subject=${encodeURIComponent(asunto())}&body=${encodeURIComponent(cuerpoCorreo())}`;
+    const cc = encodeURIComponent(COPIA.join(","));
+    return `mailto:${DESTINATARIO}?cc=${cc}&subject=${encodeURIComponent(asunto())}&body=${encodeURIComponent(cuerpoCorreo())}`;
   }
   function gmailWebUrl(): string {
-    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(DESTINATARIO)}&su=${encodeURIComponent(asunto())}&body=${encodeURIComponent(cuerpoCorreo())}`;
+    const cc = encodeURIComponent(COPIA.join(","));
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(DESTINATARIO)}&cc=${cc}&su=${encodeURIComponent(asunto())}&body=${encodeURIComponent(cuerpoCorreo())}`;
   }
 
   function enviarCorreo() {
@@ -400,8 +403,9 @@ export default function InsumosPedido({
 
         <footer className="note">
           <strong>Sobre esta página:</strong> el botón de correo abre Gmail (en el celular, la app) con
-          el pedido ya escrito hacia <strong>{DESTINATARIO}</strong>. La fecha de entrega se calcula a{" "}
-          {DIAS_HABILES_ENTREGA} días hábiles del pedido. Las cantidades no se guardan.
+          el pedido ya escrito hacia <strong>{DESTINATARIO}</strong>, con copia a Gerencia y
+          Refacciones. La fecha de entrega se calcula a {DIAS_HABILES_ENTREGA} días hábiles del pedido.
+          Las cantidades no se guardan.
         </footer>
       </div>
     </div>
