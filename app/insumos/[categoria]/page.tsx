@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
+import { SESSION_COOKIE, isValidSessionValue } from "@/lib/auth";
 import { getInsumosData, getCategoria } from "@/lib/parseInsumos";
 import InsumosPedido from "@/components/InsumosPedido";
 
@@ -24,6 +26,11 @@ export default async function InsumosCategoriaPage({
   const { categoria } = await params;
   const cat = getCategoria(categoria);
   if (!cat) notFound();
+
+  const cookieStore = await cookies();
+  if (!isValidSessionValue(cookieStore.get(SESSION_COOKIE)?.value)) {
+    redirect(`/login?next=/insumos/${categoria}`);
+  }
 
   try {
     const data = await getInsumosData();

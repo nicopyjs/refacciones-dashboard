@@ -1,0 +1,6 @@
+/* Tailwind — scoped to the Insumos section only. This file is imported solely by
+   app/insumos/page.tsx and components/InsumosPedido.tsx, so Next bundles it into
+   the /insumos* route chunks and its preflight never reaches the other sections. */
+@import "tailwindcss";
+@source "../insumos";
+@source "../../components/InsumosPedido.tsx";
