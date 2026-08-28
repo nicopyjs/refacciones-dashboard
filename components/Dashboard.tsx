@@ -118,6 +118,10 @@ export default function Dashboard({
     setToday(`${d.getFullYear()}-${mm}-${dd}`);
   }, []);
 
+  // "YYYY-MM" of the current month (server date until the client effect runs).
+  // Past months are hidden: in agosto se ve agosto en adelante, y así.
+  const currentMonth = (today ?? generatedAt.slice(0, 10)).slice(0, 7);
+
   useEffect(() => {
     fetch("/api/comments")
       .then((r) => (r.ok ? r.json() : { comments: [] }))
@@ -174,7 +178,20 @@ export default function Dashboard({
 
   // a month with only one week's worth of days (or less) is redundant with the
   // weekly cards below and reads as broken (a handful of columns stretched wide)
-  const months = useMemo(() => groupByMonth(weeks).filter((m) => m.days.length > 5), [weeks]);
+  const months = useMemo(
+    () => groupByMonth(weeks).filter((m) => m.days.length > 5 && m.key >= currentMonth),
+    [weeks, currentMonth]
+  );
+
+  // only the current month onward; a week belongs to a month by its last real date
+  const visibleWeeks = useMemo(
+    () =>
+      weeks.filter((w) => {
+        const valid = w.dates.filter(Boolean);
+        return valid.length === 0 || valid[valid.length - 1].slice(0, 7) >= currentMonth;
+      }),
+    [weeks, currentMonth]
+  );
 
   if (error) {
     return (
@@ -250,7 +267,7 @@ export default function Dashboard({
         <div className="stats">
           <div className="stat-tile"><div className="v">{peopleList.length}</div><div className="l">Colaboradores activos</div></div>
           <div className="stat-tile"><div className="v">{siteNames.length}</div><div className="l">Obras en curso</div></div>
-          <div className="stat-tile"><div className="v">{weeks.length}</div><div className="l">Semanas planificadas</div></div>
+          <div className="stat-tile"><div className="v">{visibleWeeks.length}</div><div className="l">Semanas planificadas</div></div>
           <div className="stat-tile"><div className="v">{totalShifts}</div><div className="l">Turnos asignados (persona-día)</div></div>
         </div>
 
@@ -352,7 +369,16 @@ export default function Dashboard({
         ))}
 
         <div>
-          {weeks.map((week, wi) => {
+          {visibleWeeks.length === 0 && (
+            <section className="week-card">
+              <p className="sub" style={{ margin: 0 }}>
+                No hay semanas planificadas para {MONTH_ES[Number(currentMonth.slice(5)) - 1]}{" "}
+                {currentMonth.slice(0, 4)} en adelante. Actualiza el archivo en Google Drive con las
+                próximas semanas.
+              </p>
+            </section>
+          )}
+          {visibleWeeks.map((week, wi) => {
             const includesToday = today !== null && week.dates.includes(today);
             return (
               <section className="week-card" key={wi}>

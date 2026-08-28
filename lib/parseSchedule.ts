@@ -222,7 +222,15 @@ export async function getScheduleData(): Promise<ScheduleData> {
       if (prevMonthGlobal !== null && month < prevMonthGlobal && prevMonthGlobal - month >= 6) {
         globalYear++;
       }
-      const d = new Date(Date.UTC(globalYear, month - 1, day));
+
+      let d = new Date(Date.UTC(globalYear, month - 1, day));
+      // A block can start with the last day(s) of the previous month (e.g. the
+      // "SEPTIEMBRE" block whose day row begins on the 31st = Aug 31). The label
+      // only names September, so Date rolls "Sep 31" over to Oct 1 — detect that
+      // and pull the day back into the previous month where it belongs.
+      if (d.getUTCDate() !== day) {
+        d = new Date(Date.UTC(globalYear, month - 2, day));
+      }
       dates.push(d.toISOString().slice(0, 10));
       weekdays.push(WEEKDAY_ES[d.getUTCDay()]);
       prevDay = day;
