@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function TopNav({
   active,
 }: {
-  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos";
+  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion";
 }) {
   return (
     <nav className="top-nav">
@@ -12,6 +12,7 @@ export default function TopNav({
       <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Observaciones</Link>
       <Link href="/certificacion" className={active === "certificacion" ? "active" : ""}>Certificación</Link>
       <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
+      <Link href="/facturacion" className={active === "facturacion" ? "active" : ""}>Tablero Facturación RCT</Link>
     </nav>
   );
 }
