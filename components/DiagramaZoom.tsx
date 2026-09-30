@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { IBM_Plex_Sans } from "next/font/google";
 
 const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "600", "700"], display: "swap" });
@@ -32,6 +32,28 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
   const { x0: X0, y0: Y0, w: W, h: H, canvasW, canvasH } = crop;
   const [zi, setZi] = useState(initialZoom);
   const s = ZOOMS[zi];
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  // Arrastrar con el mouse para moverse por el diagrama (en táctil ya funciona el scroll nativo).
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    drag.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || !scrollerRef.current) return;
+    scrollerRef.current.scrollLeft -= e.clientX - d.x;
+    window.scrollBy(0, -(e.clientY - d.y));
+    drag.current = { x: e.clientX, y: e.clientY };
+  };
+  const endDrag = () => {
+    drag.current = null;
+    setDragging(false);
+  };
 
   return (
     <div>
@@ -52,7 +74,15 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
           <button type="button" onClick={() => setZi((z) => Math.min(ZOOMS.length - 1, z + 1))} disabled={zi === ZOOMS.length - 1} aria-label="Acercar">+</button>
         </div>
       </div>
-      <div className="scroller venta-scroller">
+      <div
+        ref={scrollerRef}
+        className="scroller venta-scroller"
+        style={{ cursor: dragging ? "grabbing" : "grab", userSelect: "none", touchAction: "pan-x pan-y" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
         <div style={{ width: W * s, height: H * s, position: "relative", background: "#fff", borderRadius: 14, overflow: "hidden" }}>
           <div
             className={plex.className}
