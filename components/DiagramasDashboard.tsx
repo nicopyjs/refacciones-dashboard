@@ -269,12 +269,6 @@ export default function DiagramasDashboard() {
       <div className="navwrap"><TopNav active="diagramas" /></div>
       <div className="wrap">
         <header className="top">
-          <div className="logo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="logo-claro" src="/logos/neb-claro.png" alt="NEB Chile" width={130} height={57} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="logo-oscuro" src="/logos/neb-oscuro.png" alt="NEB Chile" width={130} height={57} />
-          </div>
           <div className="titles">
             <h1>Diagramas del área de Refacciones</h1>
             <p className="lede">Flujo general del área y detalle de la entrega y puesta en régimen: responsables, plazos y qué se entrega al cliente.</p>

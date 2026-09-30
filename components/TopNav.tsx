@@ -8,6 +8,12 @@ export default function TopNav({
 }) {
   return (
     <nav className="top-nav">
+      <Link href="/" className="nav-logo" aria-label="NEB Chile, ir al calendario">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="logo-claro" src="/logos/neb-claro.png" alt="NEB Chile" width={82} height={36} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="logo-oscuro" src="/logos/neb-oscuro.png" alt="NEB Chile" width={82} height={36} />
+      </Link>
       <Link href="/" className={active === "calendario" ? "active" : ""}>Calendario</Link>
       <Link href="/gestion" className={active === "gestion" ? "active" : ""}>Gestión de Refacciones</Link>
       <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Observaciones</Link>

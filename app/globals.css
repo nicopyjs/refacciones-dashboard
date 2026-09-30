@@ -7,3 +7,12 @@ body {
 }
 html { background: #f1f4f8; color-scheme: light; }
 html[data-theme="dark"] { background: #0a0f1c; color-scheme: dark; }
+
+/* Logo NEB en la barra superior: versión según el tema */
+.top-nav a.nav-logo { flex: none; padding: 0; border: 0; background: none; box-shadow: none; margin-right: 10px; display: block; }
+.top-nav a.nav-logo img { height: 36px; width: auto; border-radius: 6px; display: block; }
+.top-nav a.nav-logo .logo-oscuro { display: none; }
+html[data-theme="dark"] .top-nav a.nav-logo .logo-claro { display: none; }
+html[data-theme="dark"] .top-nav a.nav-logo .logo-oscuro { display: block; }
+.top-nav a.nav-logo:hover { background: none; border: 0; }
+.top-nav { align-items: center; }

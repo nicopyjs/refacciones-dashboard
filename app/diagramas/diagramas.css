@@ -19,11 +19,6 @@ html[data-theme="dark"] .dg{
 .dg .wrap{max-width:1660px;margin:0 auto;padding:0}
 .dg .navwrap{max-width:1660px;margin:0 auto;padding-top:20px}
 .dg header.top{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--rule);margin-bottom:28px}
-.dg .logo{display:flex;align-items:center;gap:8px;flex:none}
-.dg .logo img{height:57px;width:auto;border-radius:8px;display:block}
-.dg .logo .logo-oscuro{display:none}
-html[data-theme="dark"] .dg .logo .logo-claro{display:none}
-html[data-theme="dark"] .dg .logo .logo-oscuro{display:block}
 .dg .titles{flex:1;min-width:260px}
 .dg h1{font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em;color:var(--text)}
 .dg .lede{color:var(--muted);font-size:12.5px;max-width:560px;margin:0}
