@@ -69,3 +69,11 @@ html[data-theme="dark"] .dg{
 @keyframes dgfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.dg .fade{animation:none}.dg button.card{transition:none}}
 @media (max-width:720px){.dg h1{font-size:21px}}
+
+.dg .venta-bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.dg .zoom{display:inline-flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--rule);border-radius:999px;padding:2px;font-size:12px;font-weight:600;color:var(--muted)}
+.dg .zoom span{min-width:44px;text-align:center}
+.dg .zoom button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--text);font:700 16px/1 inherit;font-family:inherit;cursor:pointer}
+.dg .zoom button:hover:not(:disabled){background:var(--card)}
+.dg .zoom button:disabled{opacity:.35;cursor:default}
+.dg .venta-scroller{border:1px solid var(--rule)}

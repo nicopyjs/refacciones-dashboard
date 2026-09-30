@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "./TopNav";
+import VentaDiagram from "./VentaDiagram";
 import "../app/dashboard.css";
 import "../app/diagramas/diagramas.css";
 
@@ -29,10 +30,10 @@ const overview: Spec = {
   width: 1080,
   lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 210 }],
   nodes: [
-    { id: "v", lane: "ref", x: 20, y: 70, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
-    { id: "c", lane: "ref", x: 250, y: 70, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
-    { id: "e", lane: "ref", x: 490, y: 18, tag: "Ejecución", title: "Ejecución", sub: "Obra en terreno" },
-    { id: "ce", lane: "ref", x: 490, y: 122, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
+    { id: "v", lane: "ref", link: "venta", x: 20, y: 70, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
+    { id: "c", lane: "ref", link: "contrato", x: 250, y: 70, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
+    { id: "e", lane: "ref", link: "ejecucion", x: 490, y: 18, tag: "Ejecución", title: "Ejecución", sub: "Obra en terreno" },
+    { id: "ce", lane: "ref", link: "certificacion", x: 490, y: 122, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
     { id: "en", lane: "ref", x: 760, y: 70, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en el diagrama siguiente", focus: true, link: "detalle" },
   ],
   edges: [{ f: "v", t: "c" }, { f: "c", t: "e" }, { f: "c", t: "ce" }, { f: "e", t: "en" }, { f: "ce", t: "en" }],
@@ -85,6 +86,8 @@ const detail: Spec = {
     { f: "r7", t: "t4" }, { f: "t4", t: "t5" },
   ],
 };
+
+const TITULOS: Record<string, string> = { venta: "Venta", contrato: "Contrato", ejecucion: "Ejecución", certificacion: "Certificación" };
 
 const STYLES: Record<EdgeStyle, { stroke: string; dash: string; w: number }> = {
   solid: { stroke: C.line, dash: "", w: 1.5 },
@@ -250,7 +253,7 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
 
 export default function DiagramasDashboard() {
   const router = useRouter();
-  const [view, setView] = useState<"general" | "detalle">("general");
+  const [view, setView] = useState<string>("general");
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [view]);
 
@@ -286,8 +289,21 @@ export default function DiagramasDashboard() {
         {view === "general" ? (
           <section className="fade" key="general">
             <h2>Flujo general del área</h2>
-            <p className="sub">La certificación corre en paralelo a la ejecución y tiene su propio diagrama. Ambas convergen en la entrega y puesta en régimen. Haz click en «Entrega y puesta en régimen» para ver el detalle.</p>
-            <div className="scroller"><Diagram spec={overview} onOpen={() => setView("detalle")} /></div>
+            <p className="sub">La certificación corre en paralelo a la ejecución y tiene su propio diagrama. Ambas convergen en la entrega y puesta en régimen. Haz click en una etapa para ver su detalle.</p>
+            <div className="scroller"><Diagram spec={overview} onOpen={setView} /></div>
+          </section>
+        ) : view === "venta" ? (
+          <section className="fade" key="venta">
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>Venta</h2>
+            <p className="sub">Proceso comercial de refacción de salas de calderas, desde la derivación de Metrogas hasta la adjudicación.</p>
+            <VentaDiagram />
+          </section>
+        ) : view !== "detalle" ? (
+          <section className="fade" key={view}>
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>{TITULOS[view] ?? view}</h2>
+            <p className="sub">El diagrama detallado de esta etapa aún no está disponible.</p>
           </section>
         ) : (
           <section className="fade" key="detalle">
