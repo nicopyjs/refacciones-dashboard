@@ -266,7 +266,7 @@ export default function DiagramasDashboard() {
 
   return (
     <div className="dg">
-      <div className="navwrap"><TopNav active="diagramas" /></div>
+      <div className="navwrap viz-root"><TopNav active="diagramas" /></div>
       <div className="wrap">
         <header className="top">
           <div className="titles">

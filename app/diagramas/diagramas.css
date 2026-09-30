@@ -17,7 +17,8 @@ html[data-theme="dark"] .dg{
 }
 .dg, .dg *{box-sizing:border-box}
 .dg .wrap{max-width:1660px;margin:0 auto;padding:0}
-.dg .navwrap{max-width:1660px;margin:0 auto;padding-top:20px}
+.dg .navwrap{max-width:1660px;margin:0 auto;padding-top:20px;background:transparent;min-height:0}
+.dg .navwrap .top-nav{margin-bottom:18px}
 .dg header.top{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--rule);margin-bottom:28px}
 .dg .titles{flex:1;min-width:260px}
 .dg h1{font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em;color:var(--text)}
