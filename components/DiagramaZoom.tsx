@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IBM_Plex_Sans } from "next/font/google";
 
 const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "600", "700"], display: "swap" });
@@ -35,6 +35,41 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
   const scrollerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+
+  // Zoom con la rueda del mouse, anclado en el punto bajo el cursor.
+  const ziRef = useRef(zi);
+  const anchor = useRef<{ x: number; y: number; cx: number; from: number } | null>(null);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let acc = 0;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      acc += e.deltaY;
+      if (Math.abs(acc) < 60) return;
+      const dir = acc < 0 ? 1 : -1;
+      acc = 0;
+      const cur = ziRef.current;
+      const next = Math.min(ZOOMS.length - 1, Math.max(0, cur + dir));
+      if (next === cur) return;
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      anchor.current = { x: (el.scrollLeft + cx) / ZOOMS[cur], y: (e.clientY - rect.top) / ZOOMS[cur], cx, from: ZOOMS[cur] };
+      ziRef.current = next;
+      setZi(next);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+  useLayoutEffect(() => {
+    ziRef.current = zi;
+    const a = anchor.current;
+    const el = scrollerRef.current;
+    if (!a || !el) return;
+    anchor.current = null;
+    el.scrollLeft = a.x * ZOOMS[zi] - a.cx;
+    window.scrollBy(0, a.y * (ZOOMS[zi] - a.from));
+  }, [zi]);
 
   // Arrastrar con el mouse para moverse por el diagrama (en táctil ya funciona el scroll nativo).
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
