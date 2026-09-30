@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import TopNav from "./TopNav";
 import VentaDiagram from "./VentaDiagram";
 import ContratoDiagram from "./ContratoDiagram";
+import CertificacionDiagram from "./CertificacionDiagram";
 import "../app/dashboard.css";
 import "../app/diagramas/diagramas.css";
 
@@ -305,6 +306,13 @@ export default function DiagramasDashboard() {
             <h2>Contrato</h2>
             <p className="sub">Proceso de contratos: desde la elaboración de borradores hasta la firma electrónica y la entrega de los contratos definitivos.</p>
             <ContratoDiagram />
+          </section>
+        ) : view === "certificacion" ? (
+          <section className="fade" key="certificacion">
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>Certificación</h2>
+            <p className="sub">Tres procesos en paralelo (Sello Verde / TC5 / TE1, terminaciones y GIO, y registro ante la SEREMI) que convergen en la inscripción y los códigos de facturación.</p>
+            <CertificacionDiagram />
           </section>
         ) : view !== "detalle" ? (
           <section className="fade" key={view}>
