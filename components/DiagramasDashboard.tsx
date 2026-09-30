@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "./TopNav";
 import VentaDiagram from "./VentaDiagram";
+import ContratoDiagram from "./ContratoDiagram";
 import "../app/dashboard.css";
 import "../app/diagramas/diagramas.css";
 
@@ -298,6 +299,13 @@ export default function DiagramasDashboard() {
             <h2>Venta</h2>
             <p className="sub">Proceso comercial de refacción de salas de calderas, desde la derivación de Metrogas hasta la adjudicación.</p>
             <VentaDiagram />
+          </section>
+        ) : view === "contrato" ? (
+          <section className="fade" key="contrato">
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>Contrato</h2>
+            <p className="sub">Proceso de contratos: desde la elaboración de borradores hasta la firma electrónica y la entrega de los contratos definitivos.</p>
+            <ContratoDiagram />
           </section>
         ) : view !== "detalle" ? (
           <section className="fade" key={view}>
