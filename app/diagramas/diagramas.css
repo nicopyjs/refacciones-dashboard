@@ -1,0 +1,71 @@
+.dg{
+  --bg:#ffffff; --panel:#f5f6f8; --card:#ffffff; --text:#1d2733; --muted:#6a7580; --line:#7f8a95; --rule:#dde1e6;
+  --lanebar:#243447; --lanetext:#ffffff;
+  --teal:#1f6f7a; --blue:#3a5ba0; --orange:#e08a2c; --slate:#6b7a89; --green:#1e9e6a; --red:#c8453c;
+  --tint-teal:rgba(31,111,122,.06); --tint-blue:rgba(58,91,160,.06); --tint-orange:rgba(224,138,44,.07); --tint-slate:rgba(107,122,137,.07);
+  --hito-bg:#e3f4ec; --shadow:0 1px 2px rgba(20,30,40,.08), 0 4px 12px -6px rgba(20,30,40,.10);
+  color-scheme:light;
+  min-height:100vh; background:var(--bg); color:var(--text);
+  font-family:var(--font-sans),Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:14px; line-height:1.4;
+  padding:0 16px 48px;
+}
+html[data-theme="dark"] .dg{
+  color-scheme:dark;
+  --bg:#12181f; --panel:#18212b; --card:#202b36; --text:#e7ecf1; --muted:#9aa6b2; --line:#7d8894; --rule:#2c3844;
+  --lanebar:#0c1218; --hito-bg:#173a2c; --shadow:none;
+  --tint-teal:rgba(60,160,172,.08); --tint-blue:rgba(110,140,210,.08); --tint-orange:rgba(224,138,44,.08); --tint-slate:rgba(150,165,180,.07);
+}
+.dg, .dg *{box-sizing:border-box}
+.dg .wrap{max-width:1660px;margin:0 auto;padding:0}
+.dg .navwrap{max-width:1660px;margin:0 auto;padding-top:20px}
+.dg header.top{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--rule);margin-bottom:28px}
+.dg .logo{display:flex;align-items:center;gap:8px;flex:none}
+.dg .logo .mark{background:var(--lanebar);color:#fff;font-weight:800;letter-spacing:.04em;font-size:20px;padding:6px 10px;border-radius:6px}
+.dg .logo .country{font-weight:600;color:var(--muted);font-size:15px}
+.dg .titles{flex:1;min-width:260px}
+.dg h1{font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em;color:var(--text)}
+.dg .lede{color:var(--muted);font-size:12.5px;max-width:560px;margin:0}
+.dg .legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:11.5px;color:var(--muted);margin-top:10px}
+.dg .legend span{display:inline-flex;align-items:center;gap:6px}
+.dg .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.dg .ln{width:20px;height:0;border-top:2px dashed var(--red);display:inline-block}
+.dg .ln.dot{border-top:2px dotted var(--line)}
+.dg .ln.ok{border-top:2px solid var(--green)}
+.dg section{margin-bottom:40px}
+.dg h2{font-size:17px;font-weight:700;margin:0 0 4px;color:var(--text)}
+.dg .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px;max-width:720px}
+.dg .backbtn{display:inline-flex;align-items:center;gap:6px;font:600 12.5px inherit;font-family:inherit;color:var(--text);background:var(--panel);border:1px solid var(--rule);border-radius:999px;padding:7px 14px;cursor:pointer;margin-bottom:16px;transition:border-color .14s ease,background .14s ease}
+.dg .backbtn:hover{border-color:var(--line)}
+.dg .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px}
+.dg .canvas{position:relative;background:var(--panel);border-radius:14px;padding:18px}
+.dg .phases{display:flex;margin-left:62px;position:relative;height:30px;margin-bottom:8px}
+.dg .phase{position:absolute;top:0;height:26px;border-bottom:2px solid var(--rule);font-size:11.5px;font-weight:600;color:var(--muted);display:flex;align-items:flex-end;padding:0 4px 4px}
+.dg .lane{display:flex;gap:12px;margin-bottom:10px}
+.dg .lane:last-of-type{margin-bottom:0}
+.dg .lanelabel{width:50px;flex:none;background:var(--lanebar);color:var(--lanetext);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.dg .lanelabel b{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;white-space:nowrap}
+.dg .lanelabel i{display:block;width:6px;height:6px;border-radius:50%;margin-top:8px}
+.dg .lanelabel .in{display:flex;flex-direction:column;align-items:center}
+.dg .lanebody{position:relative;flex:1;border-radius:10px}
+.dg .card{position:absolute;background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--c);border-radius:8px;padding:8px 10px 9px;box-shadow:var(--shadow);z-index:2;text-align:left;color:var(--text);font:inherit}
+.dg .tag{display:inline-block;background:var(--c);color:#fff;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;margin-bottom:5px}
+.dg .new{display:inline-block;border:1px solid var(--green);color:var(--green);font-size:8.5px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:1px}
+.dg .card .t{font-weight:700;font-size:12.5px;line-height:1.25}
+.dg .card .s{color:var(--muted);font-size:10.5px;margin-top:3px}
+.dg .card ul{margin:4px 0 0;padding-left:14px;color:var(--muted);font-size:10.5px}
+.dg .card ul li::marker{color:var(--c)}
+.dg .card.hito{background:var(--hito-bg);border:1px solid var(--green);border-radius:10px;display:flex;gap:8px;align-items:center;color:var(--green)}
+.dg .card.hito .t{color:var(--green)}
+.dg .card.hito .ck{flex:none;width:16px;height:16px;border-radius:50%;background:var(--green);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.dg .card.focus{outline:2px solid var(--c);outline-offset:2px}
+.dg button.card{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
+.dg button.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px -6px rgba(20,30,40,.35)}
+.dg button.card:focus-visible{outline:3px solid var(--c);outline-offset:3px}
+.dg .card .go{display:block;margin-top:6px;font-size:10.5px;font-weight:700;color:var(--c)}
+.dg svg.edges{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:visible}
+.dg svg.edges text{font-size:10.5px;font-weight:600;paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round}
+.dg .note{color:var(--muted);font-size:12px;margin-top:10px}
+.dg .fade{animation:dgfade .25s ease}
+@keyframes dgfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.dg .fade{animation:none}.dg button.card{transition:none}}
+@media (max-width:720px){.dg h1{font-size:21px}}
