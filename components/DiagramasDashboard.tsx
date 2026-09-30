@@ -28,13 +28,13 @@ const C = { teal: "var(--teal)", blue: "var(--blue)", orange: "var(--orange)", s
 
 const overview: Spec = {
   width: 1080,
-  lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 210 }],
+  lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 260 }],
   nodes: [
-    { id: "v", lane: "ref", link: "venta", x: 20, y: 70, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
-    { id: "c", lane: "ref", link: "contrato", x: 250, y: 70, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
+    { id: "v", lane: "ref", link: "venta", x: 20, y: 85, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
+    { id: "c", lane: "ref", link: "contrato", x: 250, y: 85, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
     { id: "e", lane: "ref", link: "ejecucion", x: 490, y: 18, tag: "Ejecución", title: "Ejecución", sub: "Obra en terreno" },
-    { id: "ce", lane: "ref", link: "certificacion", x: 490, y: 122, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
-    { id: "en", lane: "ref", x: 760, y: 70, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en el diagrama siguiente", focus: true, link: "detalle" },
+    { id: "ce", lane: "ref", link: "certificacion", x: 490, y: 132, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
+    { id: "en", lane: "ref", x: 760, y: 85, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en el diagrama siguiente", focus: true, link: "detalle" },
   ],
   edges: [{ f: "v", t: "c" }, { f: "c", t: "e" }, { f: "c", t: "ce" }, { f: "e", t: "en" }, { f: "ce", t: "en" }],
 };
