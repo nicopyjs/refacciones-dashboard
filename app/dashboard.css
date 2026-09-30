@@ -119,6 +119,21 @@ html[data-theme="dark"] .viz-root {
   text-transform: uppercase; letter-spacing: .05em;
 }
 .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.controls-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding-top: 12px; border-top: 1px dashed var(--gridline); font-size: 12.5px; color: var(--text-secondary);
+}
+.controls-foot strong { color: var(--text-primary); }
+/* keep the filters reachable while scrolling long month/week tables (desktop only) */
+@media (min-width: 900px) and (min-height: 760px) {
+  .controls { position: sticky; top: 8px; z-index: 30; backdrop-filter: blur(6px); }
+}
+@media (max-width: 640px) {
+  .controls-row { align-items: flex-start; }
+  .controls-row .label { min-width: 100%; }
+  .wrap { padding: 20px 14px 56px; }
+  .page-head h1 { font-size: 20px; }
+}
 .chip {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
   border-radius: 999px; padding: 6px 13px; font-size: 12.5px; cursor: pointer;
@@ -186,6 +201,9 @@ table.month-table th.name-col, table.month-table td.name-col { width: 104px; }
 td.month-cell { min-width: 30px; }
 
 td.day-col.today-col { background: var(--accent-soft); }
+/* days already gone: keep them for context but let what's ahead stand out */
+td.day-col.past-col .task-pill-solid { opacity: .4; filter: saturate(.6); }
+td.day-col.past-col .task-empty { opacity: .5; }
 
 .task-pill-solid {
   display: inline-block; width: 100%; padding: 4px 8px; border-radius: 6px;
@@ -291,6 +309,12 @@ td.day-col.today-col { background: var(--accent-soft); }
 
 /* --- shared top navigation --- */
 .top-nav { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .top-nav { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .top-nav::-webkit-scrollbar { display: none; }
+  .top-nav a { white-space: nowrap; flex: none; }
+  .top-nav .theme-toggle { flex: none; }
+}
 .top-nav a {
   font-size: 12.5px; font-weight: 600; text-decoration: none; color: var(--text-secondary);
   background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px;

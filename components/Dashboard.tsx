@@ -154,26 +154,42 @@ export default function Dashboard({
     await fetch(`/api/comments?date=${encodeURIComponent(date)}&id=${encodeURIComponent(id)}`, { method: "DELETE" });
   }, []);
 
-  const peopleList = useMemo(() => {
-    const seen: string[] = [];
-    weeks.forEach((w) => w.people.forEach((p) => { if (!seen.includes(p.person)) seen.push(p.person); }));
-    return seen;
-  }, [weeks]);
+  // "today" for filtering purposes (server date until the client effect runs)
+  const todayStr = today ?? generatedAt.slice(0, 10);
 
-  const siteNames = useMemo(() => Object.keys(siteColors), [siteColors]);
+  // Only what is still ahead (today onward): finished obras and people without
+  // upcoming assignments are noise in the filters and the stats.
+  const upcoming = useMemo(() => {
+    const siteCount: Record<string, number> = {};
+    const people: string[] = [];
+    let shifts = 0;
+    weeks.forEach((w) =>
+      w.people.forEach((p) => {
+        let has = false;
+        w.dates.forEach((d, i) => {
+          if (!d || d < todayStr) return;
+          if (p.tasks[i]) {
+            shifts++;
+            has = true;
+          }
+          const s = p.sites[i];
+          if (s) {
+            siteCount[s] = (siteCount[s] || 0) + 1;
+            has = true;
+          }
+        });
+        if (has && !people.includes(p.person)) people.push(p.person);
+      })
+    );
+    return { siteCount, people, shifts };
+  }, [weeks, todayStr]);
 
-  const siteCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    weeks.forEach((w) => w.people.forEach((p) => p.sites.forEach((s) => {
-      if (!s) return;
-      counts[s] = (counts[s] || 0) + 1;
-    })));
-    return counts;
-  }, [weeks]);
-
-  const totalShifts = useMemo(
-    () => weeks.reduce((acc, w) => acc + w.people.reduce((a, p) => a + p.tasks.filter(Boolean).length, 0), 0),
-    [weeks]
+  const peopleList = upcoming.people;
+  const siteCounts = upcoming.siteCount;
+  const totalShifts = upcoming.shifts;
+  const siteNames = useMemo(
+    () => Object.keys(siteColors).filter((s) => (siteCounts[s] ?? 0) > 0),
+    [siteColors, siteCounts]
   );
 
   // a month with only one week's worth of days (or less) is redundant with the
@@ -192,6 +208,8 @@ export default function Dashboard({
       }),
     [weeks, currentMonth]
   );
+
+  const hasFilters = selectedPerson !== null || selectedSite !== null;
 
   if (error) {
     return (
@@ -265,10 +283,10 @@ export default function Dashboard({
         </header>
 
         <div className="stats">
-          <div className="stat-tile"><div className="v">{peopleList.length}</div><div className="l">Colaboradores activos</div></div>
+          <div className="stat-tile"><div className="v">{peopleList.length}</div><div className="l">Colaboradores con turnos</div></div>
           <div className="stat-tile"><div className="v">{siteNames.length}</div><div className="l">Obras en curso</div></div>
           <div className="stat-tile"><div className="v">{visibleWeeks.length}</div><div className="l">Semanas planificadas</div></div>
-          <div className="stat-tile"><div className="v">{totalShifts}</div><div className="l">Turnos asignados (persona-día)</div></div>
+          <div className="stat-tile"><div className="v">{totalShifts}</div><div className="l">Turnos por delante (persona-día)</div></div>
         </div>
 
         <div className="controls">
@@ -279,6 +297,7 @@ export default function Dashboard({
                 <button
                   key={p}
                   className={"chip" + (selectedPerson === p ? " active" : "")}
+                  aria-pressed={selectedPerson === p}
                   onClick={() => setSelectedPerson(selectedPerson === p ? null : p)}
                 >
                   {titleCase(p)}
@@ -289,12 +308,28 @@ export default function Dashboard({
           <div className="controls-row">
             <span className="label">Obra</span>
             <div className="chip-row">
-              {siteNames.map((s) => renderLegendChip(s))}
-              {selectedSite && (
-                <button className="reset" onClick={() => setSelectedSite(null)}>Quitar filtro de obra</button>
-              )}
+              {siteNames.map((s) => renderLegendChip(s, siteCounts[s]))}
             </div>
           </div>
+          {hasFilters && (
+            <div className="controls-foot">
+              <span>
+                Filtrando por{" "}
+                <strong>
+                  {[selectedPerson && titleCase(selectedPerson), selectedSite].filter(Boolean).join(" · ")}
+                </strong>
+              </span>
+              <button
+                className="reset"
+                onClick={() => {
+                  setSelectedPerson(null);
+                  setSelectedSite(null);
+                }}
+              >
+                Quitar filtros
+              </button>
+            </div>
+          )}
         </div>
 
         {months.map((month) => (
@@ -338,7 +373,7 @@ export default function Dashboard({
                           const isToday = month.days[ci].date === today;
                           const dim = selectedSite !== null && cell.site !== selectedSite;
                           return (
-                            <td key={ci} className={"day-col month-cell" + (isToday ? " today-col" : "")}>
+                            <td key={ci} className={"day-col month-cell" + (isToday ? " today-col" : "") + (month.days[ci].date < todayStr ? " past-col" : "")}>
                               {renderCell(cell.task, cell.site, dim)}
                             </td>
                           );
@@ -424,7 +459,7 @@ export default function Dashboard({
                               const site = p.sites[ti];
                               const dim = selectedSite !== null && site !== selectedSite;
                               return (
-                                <td key={ti} className={"day-col" + (isToday ? " today-col" : "")}>
+                                <td key={ti} className={"day-col" + (isToday ? " today-col" : "") + (week.dates[ti] && week.dates[ti] < todayStr ? " past-col" : "")}>
                                   {renderCell(t, site, dim)}
                                 </td>
                               );
@@ -467,7 +502,7 @@ export default function Dashboard({
 
         <section className="summary">
           <h2>Distribución de persona-días por obra</h2>
-          <p className="hint">Suma de días asignados a cada obra, todo el período.</p>
+          <p className="hint">Días asignados por obra de hoy en adelante; las obras sin días pendientes no se muestran.</p>
           <div>
             {barEntries.map((e) => (
               <div className="bar-row" key={e.site}>
