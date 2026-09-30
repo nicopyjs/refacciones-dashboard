@@ -29,10 +29,11 @@
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
+  color-scheme: light;
   -webkit-font-smoothing: antialiased;
 }
-@media (prefers-color-scheme: dark) {
-  .viz-root {
+html[data-theme="dark"] .viz-root {
+    color-scheme: dark;
     --surface-1:      #141b2b;
     --surface-2:      #0f1626;
     --page-plane:     #0a0f1c;
@@ -52,7 +53,6 @@
     --ui-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.35);
     --ui-shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.55), 0 2px 8px -2px rgba(0, 0, 0, 0.40);
     --ring:      0 0 0 3px rgba(75, 139, 245, 0.40);
-  }
 }
 
 .viz-root * { box-sizing: border-box; }
@@ -297,6 +297,22 @@ td.day-col.today-col { background: var(--accent-soft); }
   padding: 8px 15px; box-shadow: var(--ui-shadow-sm);
   transition: color .14s ease, border-color .14s ease, background .14s ease, box-shadow .14s ease;
 }
+.top-nav .theme-toggle {
+  margin-left: auto; display: inline-flex; align-items: center; padding: 4px; cursor: pointer;
+  background: none; border: 0; border-radius: 999px;
+}
+.theme-toggle-track {
+  width: 44px; height: 24px; border-radius: 999px; padding: 2px; display: flex; align-items: center;
+  background: var(--surface-1); border: 1px solid var(--border); box-shadow: var(--ui-shadow-sm);
+  transition: background .18s ease, border-color .18s ease;
+}
+.theme-toggle-track[data-on="true"] { background: var(--accent); border-color: var(--accent); }
+.theme-toggle-thumb {
+  width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--text-secondary); color: var(--surface-1); transition: transform .18s ease;
+}
+.theme-toggle-track[data-on="true"] .theme-toggle-thumb { transform: translateX(20px); background: #fff; color: var(--accent); }
+.theme-toggle:focus-visible { outline: 2px solid transparent; box-shadow: var(--ring); }
 .top-nav a.active { color: #fff; background: var(--accent); border-color: var(--accent); box-shadow: var(--ui-shadow-md); }
 .top-nav a:hover:not(.active) { color: var(--text-primary); border-color: var(--baseline); background: var(--surface-2); }
 

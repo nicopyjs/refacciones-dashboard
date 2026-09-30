@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 
 export default function TopNav({
   active,
@@ -13,6 +14,7 @@ export default function TopNav({
       <Link href="/certificacion" className={active === "certificacion" ? "active" : ""}>Certificación</Link>
       <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
       <Link href="/facturacion" className={active === "facturacion" ? "active" : ""}>Tablero Facturación RCT</Link>
+      <ThemeToggle />
     </nav>
   );
 }

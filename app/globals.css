@@ -5,3 +5,5 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+html { background: #f1f4f8; color-scheme: light; }
+html[data-theme="dark"] { background: #0a0f1c; color-scheme: dark; }

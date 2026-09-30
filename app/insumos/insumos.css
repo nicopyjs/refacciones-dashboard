@@ -4,3 +4,6 @@
 @import "tailwindcss";
 @source "../insumos";
 @source "../../components/InsumosPedido.tsx";
+
+/* El variante dark: sigue el switch (data-theme) en vez de prefers-color-scheme. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

@@ -11,18 +11,16 @@
   --f-mono:var(--font-plex-mono),ui-monospace,Menlo,Consolas,monospace;
   color-scheme:light;
 }
-@media (prefers-color-scheme: dark){
-  .rct{
+html[data-theme="dark"] .rct{
     color-scheme:dark;
     --bg:#121417; --surface:#1A1D21; --surface-2:#20242A; --ink:#ECEEEF; --ink-2:#C2C7CD; --muted:#8E959D; --rule:#2E333A;
     --fact:#3FBF77; --fact-soft:#16362A; --fact-ink:#8FE0B0;
     --esp:#F0C530; --esp-soft:#3A3113; --esp-ink:#F7D774;
     --proy:#7D8794; --proy-soft:#262B32; --proy-ink:#C3CAD2;
     --bad:#F07A6C; --bad-soft:#3B1E1B; --grid:#262A30;
-  }
 }
 .rct, .rct *{box-sizing:border-box}
-.rct{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:0 48px}
+.rct{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:0 48px}
 .rct .wrap{max-width:1180px;margin:0 auto}
 .rct .num{font-variant-numeric:tabular-nums}
 .rct .mono{font-family:var(--f-mono);font-size:12px}

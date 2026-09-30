@@ -52,12 +52,12 @@ export default function FacturacionDashboard({
 
   return (
     <>
-      <div className="viz-root" style={{ minHeight: 0 }}>
-        <div className="wrap" style={{ paddingBottom: 0 }}>
-          <TopNav active="facturacion" />
-        </div>
-      </div>
       <div className={`rct ${archivo.variable} ${plex.variable} ${plexMono.variable}`}>
+        <div className="viz-root" style={{ minHeight: 0, background: "transparent" }}>
+          <div className="wrap" style={{ paddingBottom: 0, paddingInline: 0 }}>
+            <TopNav active="facturacion" />
+          </div>
+        </div>
         <div className="wrap">
           <header className="top">
             <div>
