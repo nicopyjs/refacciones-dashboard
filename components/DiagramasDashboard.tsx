@@ -30,14 +30,14 @@ const C = { teal: "var(--teal)", blue: "var(--blue)", orange: "var(--orange)", s
 
 const overview: Spec = {
   width: 1260,
-  lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 210 }],
+  lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 260 }],
   nodes: [
-    { id: "v", lane: "ref", link: "venta", x: 20, y: 70, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
-    { id: "c", lane: "ref", link: "contrato", x: 230, y: 70, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
-    { id: "ip", lane: "ref", link: "ingenieria", x: 440, y: 70, w: 190, tag: "Ingeniería", title: "Ingeniería y gestión", sub: "Del traspaso comercial a la entrega de EE.TT. y planos" },
+    { id: "v", lane: "ref", link: "venta", x: 20, y: 90, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
+    { id: "c", lane: "ref", link: "contrato", x: 230, y: 90, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
+    { id: "ip", lane: "ref", link: "ingenieria", x: 440, y: 90, w: 190, tag: "Ingeniería", title: "Ingeniería y gestión", sub: "Del traspaso comercial a la entrega de EE.TT. y planos" },
     { id: "e", lane: "ref", x: 690, y: 18, tag: "Operaciones", title: "Operaciones", sub: "Planificación y ejecución" },
-    { id: "ce", lane: "ref", link: "certificacion", x: 690, y: 122, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
-    { id: "en", lane: "ref", x: 940, y: 70, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en su diagrama", focus: true, link: "detalle" },
+    { id: "ce", lane: "ref", link: "certificacion", x: 690, y: 138, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
+    { id: "en", lane: "ref", x: 940, y: 90, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en su diagrama", focus: true, link: "detalle" },
   ],
   edges: [{ f: "v", t: "c" }, { f: "c", t: "ip" }, { f: "ip", t: "e" }, { f: "ip", t: "ce" }, { f: "e", t: "en" }, { f: "ce", t: "en" }],
 };
