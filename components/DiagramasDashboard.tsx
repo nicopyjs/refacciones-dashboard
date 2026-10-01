@@ -15,9 +15,9 @@ type EdgeStyle = "solid" | "dot" | "red" | "ok";
 type Node = {
   id: string; lane: string; x: number; y: number; w?: number;
   tag?: string; title: string; sub?: string; items?: string[];
-  nuevo?: boolean; color?: string; kind?: "hito"; focus?: boolean; link?: string;
+  nuevo?: boolean; color?: string; kind?: "hito" | "decision"; focus?: boolean; ghost?: boolean; num?: number; link?: string;
 };
-type Edge = { f: string; t: string; fs?: Side; ts?: Side; fo?: number; to?: number; style?: EdgeStyle; label?: string };
+type Edge = { f: string; t: string; fs?: Side; ts?: Side; fo?: number; to?: number; style?: EdgeStyle; label?: string; k?: number };
 type Spec = {
   width: number;
   phases?: { x0: number; x1: number; label: string }[];
@@ -29,16 +29,52 @@ type Spec = {
 const C = { teal: "var(--teal)", blue: "var(--blue)", orange: "var(--orange)", slate: "var(--slate)", green: "var(--green)", red: "var(--red)", line: "var(--line)" };
 
 const overview: Spec = {
-  width: 1080,
-  lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 260 }],
+  width: 1260,
+  lanes: [{ id: "ref", label: "Refacciones", color: C.teal, tint: "var(--tint-teal)", h: 210 }],
   nodes: [
-    { id: "v", lane: "ref", link: "venta", x: 20, y: 85, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
-    { id: "c", lane: "ref", link: "contrato", x: 250, y: 85, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
-    { id: "e", lane: "ref", link: "ejecucion", x: 490, y: 18, tag: "Ejecución", title: "Ejecución", sub: "Obra en terreno" },
-    { id: "ce", lane: "ref", link: "certificacion", x: 490, y: 132, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
-    { id: "en", lane: "ref", x: 760, y: 85, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en el diagrama siguiente", focus: true, link: "detalle" },
+    { id: "v", lane: "ref", link: "venta", x: 20, y: 70, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
+    { id: "c", lane: "ref", link: "contrato", x: 230, y: 70, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
+    { id: "ip", lane: "ref", link: "ingenieria", x: 440, y: 70, w: 190, tag: "Ingeniería", title: "Ingeniería y gestión", sub: "Del traspaso comercial a la entrega de EE.TT. y planos" },
+    { id: "e", lane: "ref", x: 690, y: 18, tag: "Operaciones", title: "Operaciones", sub: "Planificación y ejecución" },
+    { id: "ce", lane: "ref", link: "certificacion", x: 690, y: 122, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
+    { id: "en", lane: "ref", x: 940, y: 70, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en su diagrama", focus: true, link: "detalle" },
   ],
-  edges: [{ f: "v", t: "c" }, { f: "c", t: "e" }, { f: "c", t: "ce" }, { f: "e", t: "en" }, { f: "ce", t: "en" }],
+  edges: [{ f: "v", t: "c" }, { f: "c", t: "ip" }, { f: "ip", t: "e" }, { f: "ip", t: "ce" }, { f: "e", t: "en" }, { f: "ce", t: "en" }],
+};
+
+const ingenieria: Spec = {
+  width: 1700,
+  lanes: [
+    { id: "met", label: "Metrogas y cliente", color: C.orange, tint: "var(--tint-orange)", h: 110 },
+    { id: "adm", label: "Administración", color: C.green, tint: "var(--tint-slate)", h: 110 },
+    { id: "com", label: "Comercial", color: C.slate, tint: "var(--tint-slate)", h: 120 },
+    { id: "ing", label: "Ingeniería", color: C.teal, tint: "var(--tint-teal)", h: 290 },
+    { id: "ope", label: "Operaciones", color: C.blue, tint: "var(--tint-blue)", h: 120 },
+  ],
+  nodes: [
+    { id: "a4", lane: "adm", x: 640, y: 24, w: 170, kind: "hito", title: "Códigos y facturación del anticipo", sub: "Pago del 50%" },
+    { id: "a5", lane: "adm", x: 860, y: 24, w: 200, kind: "hito", title: "Factura 1ª cuota a la comunidad" },
+    { id: "m9", lane: "met", x: 420, y: 20, w: 180, num: 4, tag: "Metrogas + NEB + cliente", title: "Reunión de inicio", sub: "Se explica la Carta Gantt" },
+    { id: "c1", lane: "com", x: 20, y: 28, w: 170, num: 1, tag: "Comercial", title: "Traspaso a Ingeniería", sub: "Se señala lo vendido" },
+    { id: "c3", lane: "com", x: 420, y: 28, w: 170, num: 3, tag: "Comercial", title: "Envía la Gantt", sub: "Gestiona el pago del 50%" },
+    { id: "i2", lane: "ing", x: 210, y: 60, w: 170, num: 2, tag: "Ingeniería", title: "Carta Gantt preliminar" },
+    { id: "i5", lane: "ing", x: 420, y: 60, w: 160, num: 5, tag: "Ingeniería", title: "Visita inicial" },
+    { id: "i6", lane: "ing", x: 610, y: 60, w: 160, num: 6, tag: "Ingeniería", title: "Ingeniería de detalle" },
+    { id: "i7", lane: "ing", x: 800, y: 60, w: 160, num: 7, tag: "Revisión", title: "Revisión hidráulica" },
+    { id: "i8", lane: "ing", x: 990, y: 60, w: 150, kind: "decision", title: "¿La ingeniería de detalle cumple?" },
+    { id: "i9", lane: "ing", x: 1180, y: 60, w: 160, num: 8, tag: "Comité interno", title: "Reunión de tablero" },
+    { id: "i10", lane: "ing", x: 1370, y: 40, w: 210, num: 9, tag: "Cierre de etapa", focus: true, title: "Entrega de EE.TT. y planimetría", items: ["EE.TT.", "Plano diagrama de flujo", "Emplazamiento", "Layout", "Red de baja presión", "Planos eléctricos (control y fuerza)"] },
+    { id: "o1", lane: "ope", x: 1370, y: 20, w: 220, ghost: true, tag: "Por escribir", title: "Proceso de operaciones", sub: "Parte 1 mes después de facturar el anticipo" },
+  ],
+  edges: [
+    { f: "c1", t: "i2" }, { f: "i2", t: "c3" }, { f: "c3", t: "m9" }, { f: "m9", t: "a4" }, { f: "m9", t: "a5" },
+    { f: "i2", t: "i5" }, { f: "i5", t: "i6" }, { f: "i6", t: "i7" }, { f: "i7", t: "i8" },
+    { f: "i8", t: "i5", fs: "top", ts: "top", k: 50, style: "red", label: "No: falla de terreno" },
+    { f: "i8", t: "i6", fs: "top", ts: "top", k: 24, style: "red", label: "No: falla de cálculo o diseño" },
+    { f: "i8", t: "i9", style: "ok", label: "Sí" },
+    { f: "i9", t: "i10", label: "Aprobado" },
+    { f: "i10", t: "o1" },
+  ],
 };
 
 const detail: Spec = {
@@ -56,7 +92,7 @@ const detail: Spec = {
   ],
   nodes: [
     { id: "m1", lane: "met", x: 20, y: 20, tag: "GIO", title: "Revisión GIO", sub: "Evalúa la ejecución (35%)" },
-    { id: "m2", lane: "met", x: 320, y: 20, tag: "Certificación", title: "Certificación 15%", sub: "En paralelo, ~2 semanas" },
+    { id: "m2", lane: "met", x: 240, y: 20, tag: "Certificación", title: "Certificación 15%", sub: "En paralelo, ~2 semanas" },
     { id: "r1", lane: "ref", x: 20, y: 20, kind: "hito", title: "Hito 0: facturación 35%", sub: "La emite Refacciones" },
     { id: "r3", lane: "ref", x: 240, y: 20, tag: "Ing. planificación", title: "Informe interno", items: ["Todo lo realizado", "Qué tiene garantía y qué no"] },
     { id: "r2", lane: "ref", x: 240, y: 150, tag: "Ing. planificación", title: "Documento de entrega", items: ["Antes y después con fotos", "Plano as-built"] },
@@ -65,7 +101,7 @@ const detail: Spec = {
     { id: "r6", lane: "ref", x: 860, y: 150, w: 200, tag: "Garantía", color: C.red, title: "Resolver garantía", items: ["24 h si afecta el ACS", "Si no, en la próxima mantención", "TyP si Refacciones no puede"] },
     { id: "r7", lane: "ref", x: 1120, y: 20, tag: "Ing. planificación", title: "Informe de eficiencia", sub: "Mes 3, siempre se emite" },
     { id: "t1", lane: "typ", x: 680, y: 20, tag: "TyP", title: "Mantención mensual", sub: "La 1ª es revisión general" },
-    { id: "t2", lane: "typ", x: 920, y: 20, tag: "Supervisor TyP", nuevo: true, title: "Feedback del mantenedor", sub: "Qué le falta a la sala, por correo o llamada" },
+    { id: "t2", lane: "typ", x: 900, y: 20, tag: "Supervisor TyP", nuevo: true, title: "Feedback del mantenedor", sub: "Qué le falta a la sala, por correo o llamada" },
     { id: "t4", lane: "typ", x: 1340, y: 20, tag: "TyP", title: "Postventa hasta mes 12", sub: "Garantías de instalación" },
     { id: "t5", lane: "typ", x: 1340, y: 120, tag: "Servicio técnico", title: "Mantención regular", sub: "Desde el año 1" },
     { id: "c1", lane: "cli", x: 240, y: 20, tag: "Cliente", title: "Recibe documento de entrega" },
@@ -89,7 +125,7 @@ const detail: Spec = {
   ],
 };
 
-const TITULOS: Record<string, string> = { venta: "Venta", contrato: "Contrato", ejecucion: "Ejecución", certificacion: "Certificación" };
+const TITULOS: Record<string, string> = { venta: "Venta", contrato: "Contrato", ingenieria: "Ingeniería y gestión", certificacion: "Certificación" };
 
 const STYLES: Record<EdgeStyle, { stroke: string; dash: string; w: number }> = {
   solid: { stroke: C.line, dash: "", w: 1.5 },
@@ -110,11 +146,14 @@ function port(b: Box, side: Side, off = 0): Pt {
   return [b.cx + off, b.b];
 }
 
-function route(p: Pt, q: Pt, fs: Side, ts: Side): Pt[] {
+function route(p: Pt, q: Pt, fs: Side, ts: Side, k?: number): Pt[] {
   const fh = fs === "left" || fs === "right";
   const th = ts === "left" || ts === "right";
   let pts: Pt[];
-  if (fh && th) { const mx = (p[0] + q[0]) / 2; pts = [p, [mx, p[1]], [mx, q[1]], q]; }
+  if (k !== undefined && fs === ts && (fs === "top" || fs === "bottom")) {
+    const y = fs === "top" ? Math.min(p[1], q[1]) - k : Math.max(p[1], q[1]) + k;
+    pts = [p, [p[0], y], [q[0], y], q];
+  } else if (fh && th) { const mx = (p[0] + q[0]) / 2; pts = [p, [mx, p[1]], [mx, q[1]], q]; }
   else if (!fh && !th) { const my = (p[1] + q[1]) / 2; pts = [p, [p[0], my], [q[0], my], q]; }
   else if (fh) pts = [p, [q[0], p[1]], q];
   else pts = [p, [p[0], q[1]], q];
@@ -162,7 +201,7 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
           else if (b.b <= a.t) { fs = "top"; ts = "bottom"; }
           else { fs = "left"; ts = "right"; }
         }
-        const pts = route(port(a, fs, e.fo), port(b, ts, e.to), fs, ts);
+        const pts = route(port(a, fs, e.fo), port(b, ts, e.to), fs, ts, e.k);
         let label: Drawn["label"];
         if (e.label) {
           let bi = 0, best = -1;
@@ -212,8 +251,16 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
                   </div>
                 );
               }
+              if (n.kind === "decision") {
+                return (
+                  <div key={n.id} data-id={n.id} className="card decision" style={style}>
+                    <div className="k">Decisión</div><div className="t">{n.title}</div>
+                  </div>
+                );
+              }
               const body = (
                 <>
+                  {n.num && <span className="num">{n.num}</span>}
                   {n.tag && <span className="tag">{n.tag}</span>}
                   {n.nuevo && <span className="new">Nuevo</span>}
                   <div className="t">{n.title}</div>
@@ -223,9 +270,9 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
                 </>
               );
               return n.link && onOpen ? (
-                <button key={n.id} type="button" data-id={n.id} className={`card${n.focus ? " focus" : ""}`} style={style} onClick={() => onOpen(n.link!)}>{body}</button>
+                <button key={n.id} type="button" data-id={n.id} className={`card${n.focus ? " focus" : ""}${n.num ? " numbered" : ""}${n.ghost ? " ghost" : ""}`} style={style} onClick={() => onOpen(n.link!)}>{body}</button>
               ) : (
-                <div key={n.id} data-id={n.id} className={`card${n.focus ? " focus" : ""}`} style={style}>{body}</div>
+                <div key={n.id} data-id={n.id} className={`card${n.focus ? " focus" : ""}${n.num ? " numbered" : ""}${n.ghost ? " ghost" : ""}`} style={style}>{body}</div>
               );
             })}
           </div>
@@ -272,7 +319,7 @@ export default function DiagramasDashboard() {
         <header className="top">
           <div className="titles">
             <h1>Diagramas del área de Refacciones</h1>
-            <p className="lede">Flujo general del área y detalle de la entrega y puesta en régimen: responsables, plazos y qué se entrega al cliente.</p>
+            <p className="lede">Flujo general del área, ingeniería y gestión, y detalle de la entrega y puesta en régimen: responsables, plazos y qué se entrega al cliente.</p>
             <div className="legend">
               <span><i className="sw" style={{ background: "var(--teal)" }} />Refacciones</span>
               <span><i className="sw" style={{ background: "var(--blue)" }} />TyP / Servicio técnico</span>
@@ -290,7 +337,7 @@ export default function DiagramasDashboard() {
         {view === "general" ? (
           <section className="fade" key="general">
             <h2>Flujo general del área</h2>
-            <p className="sub">La certificación corre en paralelo a la ejecución y tiene su propio diagrama. Ambas convergen en la entrega y puesta en régimen. Haz click en una etapa para ver su detalle.</p>
+            <p className="sub">Después del contrato, Ingeniería y gestión entrega las especificaciones y planos para operaciones. La certificación corre en paralelo a operaciones y tiene su propio diagrama; ambas convergen en la entrega y puesta en régimen. Haz click en una etapa para ver su detalle.</p>
             <div className="scroller"><Diagram spec={overview} onOpen={setView} /></div>
           </section>
         ) : view === "venta" ? (
@@ -306,6 +353,13 @@ export default function DiagramasDashboard() {
             <h2>Contrato</h2>
             <p className="sub">Proceso de contratos: desde la elaboración de borradores hasta la firma electrónica y la entrega de los contratos definitivos.</p>
             <ContratoDiagram />
+          </section>
+        ) : view === "ingenieria" ? (
+          <section className="fade" key="ingenieria">
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>Ingeniería y gestión</h2>
+            <p className="sub">Va del traspaso comercial a la entrega de EE.TT. y planimetría. El envío de la Gantt abre la reunión de inicio, y esta abre la facturación del 50% a Metrogas y de la 1ª cuota a la comunidad. Si la ingeniería de detalle no cumple, vuelve a la visita inicial o a la ingeniería según el tipo de falla. Operaciones parte un mes después de facturar el anticipo.</p>
+            <div className="scroller"><Diagram spec={ingenieria} /></div>
           </section>
         ) : view === "certificacion" ? (
           <section className="fade" key="certificacion">

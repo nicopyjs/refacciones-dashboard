@@ -55,6 +55,11 @@ html[data-theme="dark"] .dg{
 .dg .card.hito{background:var(--hito-bg);border:1px solid var(--green);border-radius:10px;display:flex;gap:8px;align-items:center;color:var(--green)}
 .dg .card.hito .t{color:var(--green)}
 .dg .card.hito .ck{flex:none;width:16px;height:16px;border-radius:50%;background:var(--green);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.dg .card.decision{text-align:center;border:1.5px solid var(--c);background:var(--card)}
+.dg .card.decision .k{font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c);margin-bottom:3px}
+.dg .card .num{position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:var(--c);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)}
+.dg .card.numbered{padding-top:12px}
+.dg .card.ghost{background:transparent;border:1.5px dashed var(--c);box-shadow:none}
 .dg .card.focus{outline:2px solid var(--c);outline-offset:2px}
 .dg button.card{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
 .dg button.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px -6px rgba(20,30,40,.35)}
