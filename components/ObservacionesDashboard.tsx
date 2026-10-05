@@ -38,6 +38,10 @@ function prioridadChip(v: string | null) {
 const RESPONSABLES = ["Pablo", "Helmer", "Juan", "Constanza"];
 const ESTADOS = ["Pendiente", "En proceso", "Resuelta", "Verificada"];
 
+function toggle(list: string[], v: string): string[] {
+  return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
+}
+
 function isResuelta(estado: string | null): boolean {
   const up = (estado ?? "").toUpperCase();
   return up === "RESUELTA" || up === "VERIFICADA";
@@ -55,8 +59,8 @@ export default function ObservacionesDashboard({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [onlyAtrasadas, setOnlyAtrasadas] = useState(false);
-  const [responsableSel, setResponsableSel] = useState<string | null>(null);
-  const [estadoSel, setEstadoSel] = useState<string | null>(null);
+  const [responsableSel, setResponsableSel] = useState<string[]>([]);
+  const [estadoSel, setEstadoSel] = useState<string[]>([]);
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -96,11 +100,11 @@ export default function ObservacionesDashboard({
         (o.proyecto + " " + (o.descripcion ?? "") + " " + (o.responsable ?? "")).toLowerCase().includes(q)
       )
     : observaciones;
-  if (responsableSel) {
-    filtered = filtered.filter((o) => (o.responsable ?? "").toLowerCase().includes(responsableSel.toLowerCase()));
+  if (responsableSel.length) {
+    filtered = filtered.filter((o) => responsableSel.some((r) => (o.responsable ?? "").toLowerCase().includes(r.toLowerCase())));
   }
-  if (estadoSel) {
-    filtered = filtered.filter((o) => (o.estado ?? "").toUpperCase() === estadoSel.toUpperCase());
+  if (estadoSel.length) {
+    filtered = filtered.filter((o) => estadoSel.some((e) => (o.estado ?? "").toUpperCase() === e.toUpperCase()));
   }
   if (onlyAtrasadas) {
     filtered = filtered.filter((o) => !isResuelta(o.estado) && o.diasAbiertos !== null && o.diasAbiertos > 15);
@@ -126,7 +130,7 @@ export default function ObservacionesDashboard({
           </div>
         </header>
 
-        <div className="stats">
+        <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
           <div className="stat-tile"><div className="v">{stats.total}</div><div className="l">Tareas totales</div></div>
           <div className="stat-tile"><div className="v">{stats.pendientes}</div><div className="l">Pendientes</div></div>
           <div className="stat-tile"><div className="v">{stats.enProceso}</div><div className="l">En proceso</div></div>
@@ -156,14 +160,14 @@ export default function ObservacionesDashboard({
           </div>
           <div className="controls-row" style={{ marginBottom: 8 }}>
             {RESPONSABLES.map((r) => (
-              <button key={r} type="button" className={"chip" + (responsableSel === r ? " active" : "")} onClick={() => setResponsableSel(responsableSel === r ? null : r)}>
+              <button key={r} type="button" className={"chip" + (responsableSel.includes(r) ? " active" : "")} onClick={() => setResponsableSel(toggle(responsableSel, r))}>
                 {r}
               </button>
             ))}
           </div>
           <div className="controls-row" style={{ marginBottom: 12 }}>
             {ESTADOS.map((e) => (
-              <button key={e} type="button" className={"chip" + (estadoSel === e ? " active" : "")} onClick={() => setEstadoSel(estadoSel === e ? null : e)}>
+              <button key={e} type="button" className={"chip" + (estadoSel.includes(e) ? " active" : "")} onClick={() => setEstadoSel(toggle(estadoSel, e))}>
                 {e}
               </button>
             ))}
