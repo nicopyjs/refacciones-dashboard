@@ -110,6 +110,7 @@ export default function Dashboard({
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [today, setToday] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
 
   useEffect(() => {
     const d = new Date();
@@ -119,7 +120,7 @@ export default function Dashboard({
   }, []);
 
   // "YYYY-MM" of the current month (server date until the client effect runs).
-  // Past months are hidden: in agosto se ve agosto en adelante, y así.
+  // Es el mes que se muestra por defecto; los anteriores se alcanzan con el selector.
   const currentMonth = (today ?? generatedAt.slice(0, 10)).slice(0, 7);
 
   useEffect(() => {
@@ -194,19 +195,36 @@ export default function Dashboard({
 
   // a month with only one week's worth of days (or less) is redundant with the
   // weekly cards below and reads as broken (a handful of columns stretched wide)
-  const months = useMemo(
-    () => groupByMonth(weeks).filter((m) => m.days.length > 5 && m.key >= currentMonth),
+  const allMonths = useMemo(() => groupByMonth(weeks).filter((m) => m.days.length > 5), [weeks]);
+
+  // mes elegido: el del selector, o el actual (o el más cercano disponible) por defecto
+  const selectedMonthKey = useMemo(() => {
+    const keys = allMonths.map((m) => m.key);
+    if (pickedMonth && keys.includes(pickedMonth)) return pickedMonth;
+    return keys.find((k) => k >= currentMonth) ?? keys[keys.length - 1] ?? currentMonth;
+  }, [allMonths, pickedMonth, currentMonth]);
+  const isPastView = selectedMonthKey < currentMonth;
+  const monthIdx = allMonths.findIndex((m) => m.key === selectedMonthKey);
+  const months = useMemo(() => allMonths.filter((m) => m.key === selectedMonthKey), [allMonths, selectedMonthKey]);
+
+  const weekMonth = (w: Week): string | null => {
+    const valid = w.dates.filter(Boolean);
+    return valid.length ? valid[valid.length - 1].slice(0, 7) : null;
+  };
+
+  // semanas planificadas desde el mes actual (para las estadísticas)
+  const visibleWeeks = useMemo(
+    () => weeks.filter((w) => (weekMonth(w) ?? currentMonth) >= currentMonth),
     [weeks, currentMonth]
   );
 
-  // only the current month onward; a week belongs to a month by its last real date
-  const visibleWeeks = useMemo(
+  // tarjetas semanales: mes actual en adelante; en un mes pasado, solo las semanas de ese mes
+  const listedWeeks = useMemo(
     () =>
-      weeks.filter((w) => {
-        const valid = w.dates.filter(Boolean);
-        return valid.length === 0 || valid[valid.length - 1].slice(0, 7) >= currentMonth;
-      }),
-    [weeks, currentMonth]
+      isPastView
+        ? weeks.filter((w) => weekMonth(w) === selectedMonthKey)
+        : weeks.filter((w) => (weekMonth(w) ?? currentMonth) >= selectedMonthKey),
+    [weeks, isPastView, selectedMonthKey, currentMonth]
   );
 
   const hasFilters = selectedPerson !== null || selectedSite !== null;
@@ -336,6 +354,38 @@ export default function Dashboard({
           <section className="month-card" key={month.key}>
             <div className="week-head">
               <h2>Vista mensual — {month.label}</h2>
+              <div className="month-picker">
+                <button
+                  type="button"
+                  aria-label="Mes anterior"
+                  disabled={monthIdx <= 0}
+                  onClick={() => setPickedMonth(allMonths[monthIdx - 1].key)}
+                >
+                  ‹
+                </button>
+                <select
+                  aria-label="Seleccionar mes"
+                  value={selectedMonthKey}
+                  onChange={(e) => setPickedMonth(e.target.value)}
+                >
+                  {allMonths.map((m) => (
+                    <option key={m.key} value={m.key}>{m.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  aria-label="Mes siguiente"
+                  disabled={monthIdx >= allMonths.length - 1}
+                  onClick={() => setPickedMonth(allMonths[monthIdx + 1].key)}
+                >
+                  ›
+                </button>
+                {selectedMonthKey !== currentMonth && allMonths.some((m) => m.key === currentMonth) && (
+                  <button type="button" className="month-today" onClick={() => setPickedMonth(null)}>
+                    Mes actual
+                  </button>
+                )}
+              </div>
             </div>
             <div className="table-scroll">
               <table className="sched month-table">
@@ -373,7 +423,7 @@ export default function Dashboard({
                           const isToday = month.days[ci].date === today;
                           const dim = selectedSite !== null && cell.site !== selectedSite;
                           return (
-                            <td key={ci} className={"day-col month-cell" + (isToday ? " today-col" : "") + (month.days[ci].date < todayStr ? " past-col" : "")}>
+                            <td key={ci} className={"day-col month-cell" + (isToday ? " today-col" : "") + (!isPastView && month.days[ci].date < todayStr ? " past-col" : "")}>
                               {renderCell(cell.task, cell.site, dim)}
                             </td>
                           );
@@ -404,16 +454,16 @@ export default function Dashboard({
         ))}
 
         <div>
-          {visibleWeeks.length === 0 && (
+          {listedWeeks.length === 0 && (
             <section className="week-card">
               <p className="sub" style={{ margin: 0 }}>
-                No hay semanas planificadas para {MONTH_ES[Number(currentMonth.slice(5)) - 1]}{" "}
-                {currentMonth.slice(0, 4)} en adelante. Actualiza el archivo en Google Drive con las
+                No hay semanas planificadas para {MONTH_ES[Number(selectedMonthKey.slice(5)) - 1]}{" "}
+                {selectedMonthKey.slice(0, 4)}{isPastView ? "" : " en adelante"}. Actualiza el archivo en Google Drive con las
                 próximas semanas.
               </p>
             </section>
           )}
-          {visibleWeeks.map((week, wi) => {
+          {listedWeeks.map((week, wi) => {
             const includesToday = today !== null && week.dates.includes(today);
             return (
               <section className="week-card" key={wi}>
@@ -459,7 +509,7 @@ export default function Dashboard({
                               const site = p.sites[ti];
                               const dim = selectedSite !== null && site !== selectedSite;
                               return (
-                                <td key={ti} className={"day-col" + (isToday ? " today-col" : "") + (week.dates[ti] && week.dates[ti] < todayStr ? " past-col" : "")}>
+                                <td key={ti} className={"day-col" + (isToday ? " today-col" : "") + (!isPastView && week.dates[ti] && week.dates[ti] < todayStr ? " past-col" : "")}>
                                   {renderCell(t, site, dim)}
                                 </td>
                               );

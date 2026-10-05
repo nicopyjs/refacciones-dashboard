@@ -169,6 +169,19 @@ button.reset:hover { color: var(--text-primary); border-color: var(--baseline); 
   background: var(--accent); color: #fff; border-radius: 999px; padding: 3px 9px;
 }
 
+.month-picker {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px;
+}
+.month-picker button, .month-picker select {
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary);
+  background: transparent; border: 0; border-radius: 999px; cursor: pointer; padding: 5px 10px;
+}
+.month-picker select { padding-right: 6px; }
+.month-picker button:hover:not(:disabled), .month-picker select:hover { background: var(--surface-2, rgba(127,127,127,.12)); }
+.month-picker button:disabled { opacity: .35; cursor: default; }
+.month-picker .month-today { font-size: 11px; color: var(--accent); }
+
 .table-scroll { overflow-x: auto; border-radius: var(--ui-radius-sm); }
 .table-scroll::-webkit-scrollbar { height: 8px; }
 .table-scroll::-webkit-scrollbar-thumb { background: var(--baseline); border-radius: 999px; }
