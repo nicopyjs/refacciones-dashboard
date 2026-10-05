@@ -1,6 +1,9 @@
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 
+// Pestaña oculta del menú (la ruta /gestion sigue existiendo). Poner en true para volver a mostrarla.
+const MOSTRAR_GESTION = false;
+
 export default function TopNav({
   active,
 }: {
@@ -15,7 +18,9 @@ export default function TopNav({
         <img className="logo-oscuro" src="/logos/neb-oscuro.png" alt="NEB Chile" width={82} height={36} />
       </Link>
       <Link href="/" className={active === "calendario" ? "active" : ""}>Calendario</Link>
-      <Link href="/gestion" className={active === "gestion" ? "active" : ""}>Gestión de Refacciones</Link>
+      {MOSTRAR_GESTION && (
+        <Link href="/gestion" className={active === "gestion" ? "active" : ""}>Gestión de Refacciones</Link>
+      )}
       <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Observaciones</Link>
       <Link href="/certificacion" className={active === "certificacion" ? "active" : ""}>Certificación</Link>
       <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
