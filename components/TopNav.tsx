@@ -23,7 +23,7 @@ export default function TopNav({
       {MOSTRAR_GESTION && (
         <Link href="/gestion" className={active === "gestion" ? "active" : ""}>Gestión de Refacciones</Link>
       )}
-      <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Observaciones</Link>
+      <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Tareas</Link>
       <Link href="/certificacion" className={active === "certificacion" ? "active" : ""}>Certificación</Link>
       {MOSTRAR_INSUMOS && (
         <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>

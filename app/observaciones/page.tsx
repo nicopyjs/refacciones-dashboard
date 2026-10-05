@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "Seguimiento de Observaciones — RCT",
+  title: "Seguimiento de Tareas — RCT",
   description: "Observaciones de ITO, post-entrega y certificación por obra",
 };
 

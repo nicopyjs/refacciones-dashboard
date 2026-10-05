@@ -35,6 +35,9 @@ function prioridadChip(v: string | null) {
   return <StatusChip label="Sin dato" kind="muted" />;
 }
 
+const RESPONSABLES = ["Pablo", "Helmer", "Juan", "Constanza"];
+const ESTADOS = ["Pendiente", "En proceso", "Resuelta", "Verificada"];
+
 function isResuelta(estado: string | null): boolean {
   const up = (estado ?? "").toUpperCase();
   return up === "RESUELTA" || up === "VERIFICADA";
@@ -52,6 +55,8 @@ export default function ObservacionesDashboard({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [onlyAtrasadas, setOnlyAtrasadas] = useState(false);
+  const [responsableSel, setResponsableSel] = useState<string | null>(null);
+  const [estadoSel, setEstadoSel] = useState<string | null>(null);
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -68,55 +73,13 @@ export default function ObservacionesDashboard({
     return { total, pendientes, enProceso, resueltas, atrasadas };
   }, [observaciones]);
 
-  const estadoCounts = useMemo(() => {
-    const counts: Record<string, number> = { Pendiente: 0, "En Proceso": 0, Resuelta: 0, Verificada: 0, "Sin dato": 0 };
-    observaciones.forEach((o) => {
-      const up = (o.estado ?? "").toUpperCase();
-      if (up === "PENDIENTE") counts["Pendiente"]++;
-      else if (up === "EN PROCESO") counts["En Proceso"]++;
-      else if (up === "RESUELTA") counts["Resuelta"]++;
-      else if (up === "VERIFICADA") counts["Verificada"]++;
-      else counts["Sin dato"]++;
-    });
-    return counts;
-  }, [observaciones]);
-
-  const prioridadCounts = useMemo(() => {
-    const counts: Record<string, number> = { Alta: 0, Media: 0, Baja: 0, "Sin dato": 0 };
-    observaciones.forEach((o) => {
-      const up = (o.prioridad ?? "").toUpperCase();
-      if (up === "ALTA") counts["Alta"]++;
-      else if (up === "MEDIA") counts["Media"]++;
-      else if (up === "BAJA") counts["Baja"]++;
-      else counts["Sin dato"]++;
-    });
-    return counts;
-  }, [observaciones]);
-
-  const origenCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    observaciones.forEach((o) => {
-      const key = o.origen ?? "Sin dato";
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [observaciones]);
-
-  const porProyecto = useMemo(() => {
-    const counts: Record<string, number> = {};
-    observaciones.forEach((o) => {
-      counts[o.proyecto] = (counts[o.proyecto] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [observaciones]);
-
   if (error) {
     return (
       <div className="viz-root">
         <div className="wrap">
           <TopNav active="observaciones" />
           <header className="page-head">
-            <h1>Seguimiento de Observaciones</h1>
+            <h1>Seguimiento de Tareas</h1>
             <p className="sub">No se pudieron cargar los datos</p>
           </header>
           <div className="error-box" style={{ marginTop: 20 }}>
@@ -133,21 +96,22 @@ export default function ObservacionesDashboard({
         (o.proyecto + " " + (o.descripcion ?? "") + " " + (o.responsable ?? "")).toLowerCase().includes(q)
       )
     : observaciones;
+  if (responsableSel) {
+    filtered = filtered.filter((o) => (o.responsable ?? "").toLowerCase().includes(responsableSel.toLowerCase()));
+  }
+  if (estadoSel) {
+    filtered = filtered.filter((o) => (o.estado ?? "").toUpperCase() === estadoSel.toUpperCase());
+  }
   if (onlyAtrasadas) {
     filtered = filtered.filter((o) => !isResuelta(o.estado) && o.diasAbiertos !== null && o.diasAbiertos > 15);
   }
-
-  const maxEstado = Math.max(...Object.values(estadoCounts), 1);
-  const maxPrioridad = Math.max(...Object.values(prioridadCounts), 1);
-  const maxOrigen = Math.max(...origenCounts.map(([, c]) => c), 1);
-  const maxProyecto = Math.max(...porProyecto.map(([, c]) => c), 1);
 
   return (
     <div className="viz-root">
       <div className="wrap">
         <TopNav active="observaciones" />
         <header className="page-head">
-          <h1>Seguimiento de Observaciones</h1>
+          <h1>Seguimiento de Tareas</h1>
           <p className="sub">Observaciones de ITO, post-entrega y certificación por obra</p>
           <div className="meta">
             <span>
@@ -163,87 +127,16 @@ export default function ObservacionesDashboard({
         </header>
 
         <div className="stats">
-          <div className="stat-tile"><div className="v">{stats.total}</div><div className="l">Observaciones totales</div></div>
+          <div className="stat-tile"><div className="v">{stats.total}</div><div className="l">Tareas totales</div></div>
           <div className="stat-tile"><div className="v">{stats.pendientes}</div><div className="l">Pendientes</div></div>
+          <div className="stat-tile"><div className="v">{stats.enProceso}</div><div className="l">En proceso</div></div>
           <div className="stat-tile"><div className="v">{stats.resueltas}</div><div className="l">Resueltas / verificadas</div></div>
           <div className="stat-tile"><div className="v" style={{ color: stats.atrasadas > 0 ? "var(--status-critical)" : undefined }}>{stats.atrasadas}</div><div className="l">Atrasadas (&gt;15 días sin resolver)</div></div>
         </div>
 
-        <div className="two-col">
-          <section className="summary">
-            <h2>Estado</h2>
-            <p className="hint">Situación actual de cada observación.</p>
-            <div className="status-bar-list">
-              {Object.entries(estadoCounts).map(([label, count]) => {
-                const color =
-                  label === "Pendiente" ? "var(--status-critical)" :
-                  label === "En Proceso" ? "var(--status-warning)" :
-                  label === "Resuelta" || label === "Verificada" ? "var(--status-good)" : "var(--muted)";
-                return (
-                  <div className="bar-row" key={label}>
-                    <div className="lbl"><span className="sw" style={{ background: color }} />{label}</div>
-                    <div className="bar-track"><div className="bar-fill" style={{ width: `${(count / maxEstado) * 100}%`, background: color }} /></div>
-                    <div className="n">{count}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="summary">
-            <h2>Prioridad</h2>
-            <p className="hint">Urgencia asignada a cada observación.</p>
-            <div className="status-bar-list">
-              {Object.entries(prioridadCounts).map(([label, count]) => {
-                const color =
-                  label === "Alta" ? "var(--status-critical)" :
-                  label === "Media" ? "var(--status-warning)" :
-                  label === "Baja" ? "var(--status-good)" : "var(--muted)";
-                return (
-                  <div className="bar-row" key={label}>
-                    <div className="lbl"><span className="sw" style={{ background: color }} />{label}</div>
-                    <div className="bar-track"><div className="bar-fill" style={{ width: `${(count / maxPrioridad) * 100}%`, background: color }} /></div>
-                    <div className="n">{count}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-
-        <div className="two-col">
-          <section className="summary">
-            <h2>Origen</h2>
-            <p className="hint">De dónde se levantó la observación.</p>
-            <div>
-              {origenCounts.map(([label, count]) => (
-                <div className="bar-row" key={label}>
-                  <div className="lbl">{label}</div>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: `${(count / maxOrigen) * 100}%`, background: "var(--accent)" }} /></div>
-                  <div className="n">{count}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="summary">
-            <h2>Por proyecto / comunidad</h2>
-            <p className="hint">Cantidad de observaciones registradas por obra.</p>
-            <div>
-              {porProyecto.map(([label, count]) => (
-                <div className="bar-row" key={label}>
-                  <div className="lbl">{label}</div>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: `${(count / maxProyecto) * 100}%`, background: "var(--accent)" }} /></div>
-                  <div className="n">{count}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
         <section className="summary">
-          <h2>Detalle de observaciones</h2>
-          <p className="hint">Busca por proyecto, descripción o responsable.</p>
+          <h2>Detalle de tareas</h2>
+          <p className="hint">Busca por proyecto, descripción o responsable, o filtra por responsable y estado.</p>
           <div className="controls-row" style={{ marginBottom: 12 }}>
             <input
               className="search-box"
@@ -260,6 +153,20 @@ export default function ObservacionesDashboard({
             >
               Solo atrasadas ({stats.atrasadas})
             </button>
+          </div>
+          <div className="controls-row" style={{ marginBottom: 8 }}>
+            {RESPONSABLES.map((r) => (
+              <button key={r} type="button" className={"chip" + (responsableSel === r ? " active" : "")} onClick={() => setResponsableSel(responsableSel === r ? null : r)}>
+                {r}
+              </button>
+            ))}
+          </div>
+          <div className="controls-row" style={{ marginBottom: 12 }}>
+            {ESTADOS.map((e) => (
+              <button key={e} type="button" className={"chip" + (estadoSel === e ? " active" : "")} onClick={() => setEstadoSel(estadoSel === e ? null : e)}>
+                {e}
+              </button>
+            ))}
           </div>
           <div className="table-scroll">
             <table className="data-table">
