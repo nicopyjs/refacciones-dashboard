@@ -207,6 +207,28 @@ export default function Dashboard({
   const monthIdx = allMonths.findIndex((m) => m.key === selectedMonthKey);
   const months = useMemo(() => allMonths.filter((m) => m.key === selectedMonthKey), [allMonths, selectedMonthKey]);
 
+  // filtros dinámicos: solo colaboradores y obras con actividad en el mes elegido
+  const monthFilters = useMemo(() => {
+    const siteCount: Record<string, number> = {};
+    const people: string[] = [];
+    (months[0]?.people ?? []).forEach((p) => {
+      let has = false;
+      p.cells.forEach((c) => {
+        if (c.task || c.site) has = true;
+        if (c.site) siteCount[c.site] = (siteCount[c.site] || 0) + 1;
+      });
+      if (has) people.push(p.person);
+    });
+    const sites = Object.keys(siteColors).filter((n) => (siteCount[n] ?? 0) > 0);
+    return { people, sites, siteCount };
+  }, [months, siteColors]);
+
+  const changeMonth = (key: string | null) => {
+    setPickedMonth(key);
+    setSelectedPerson(null);
+    setSelectedSite(null);
+  };
+
   const weekMonth = (w: Week): string | null => {
     const valid = w.dates.filter(Boolean);
     return valid.length ? valid[valid.length - 1].slice(0, 7) : null;
@@ -311,7 +333,7 @@ export default function Dashboard({
           <div className="controls-row">
             <span className="label">Colaborador</span>
             <div className="chip-row">
-              {peopleList.map((p) => (
+              {monthFilters.people.map((p) => (
                 <button
                   key={p}
                   className={"chip" + (selectedPerson === p ? " active" : "")}
@@ -326,7 +348,7 @@ export default function Dashboard({
           <div className="controls-row">
             <span className="label">Obra</span>
             <div className="chip-row">
-              {siteNames.map((s) => renderLegendChip(s, siteCounts[s]))}
+              {monthFilters.sites.map((s) => renderLegendChip(s, monthFilters.siteCount[s]))}
             </div>
           </div>
           {hasFilters && (
@@ -359,14 +381,14 @@ export default function Dashboard({
                   type="button"
                   aria-label="Mes anterior"
                   disabled={monthIdx <= 0}
-                  onClick={() => setPickedMonth(allMonths[monthIdx - 1].key)}
+                  onClick={() => changeMonth(allMonths[monthIdx - 1].key)}
                 >
                   ‹
                 </button>
                 <select
                   aria-label="Seleccionar mes"
                   value={selectedMonthKey}
-                  onChange={(e) => setPickedMonth(e.target.value)}
+                  onChange={(e) => changeMonth(e.target.value)}
                 >
                   {allMonths.map((m) => (
                     <option key={m.key} value={m.key}>{m.label}</option>
@@ -376,12 +398,12 @@ export default function Dashboard({
                   type="button"
                   aria-label="Mes siguiente"
                   disabled={monthIdx >= allMonths.length - 1}
-                  onClick={() => setPickedMonth(allMonths[monthIdx + 1].key)}
+                  onClick={() => changeMonth(allMonths[monthIdx + 1].key)}
                 >
                   ›
                 </button>
                 {selectedMonthKey !== currentMonth && allMonths.some((m) => m.key === currentMonth) && (
-                  <button type="button" className="month-today" onClick={() => setPickedMonth(null)}>
+                  <button type="button" className="month-today" onClick={() => changeMonth(null)}>
                     Mes actual
                   </button>
                 )}
@@ -443,7 +465,7 @@ export default function Dashboard({
                   dates={monthDates}
                   weekdays={monthWeekdays}
                   comments={monthComments}
-                  siteNames={siteNames}
+                  siteNames={monthFilters.sites}
                   siteColors={siteColors}
                   onAdd={handleAddComment}
                   onDelete={handleDeleteComment}
