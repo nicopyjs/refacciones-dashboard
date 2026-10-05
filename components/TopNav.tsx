@@ -3,6 +3,8 @@ import ThemeToggle from "./ThemeToggle";
 
 // Pestaña oculta del menú (la ruta /gestion sigue existiendo). Poner en true para volver a mostrarla.
 const MOSTRAR_GESTION = false;
+// Ídem para Insumos (ruta /insumos).
+const MOSTRAR_INSUMOS = false;
 
 export default function TopNav({
   active,
@@ -23,7 +25,9 @@ export default function TopNav({
       )}
       <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Observaciones</Link>
       <Link href="/certificacion" className={active === "certificacion" ? "active" : ""}>Certificación</Link>
-      <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
+      {MOSTRAR_INSUMOS && (
+        <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
+      )}
       <Link href="/facturacion" className={active === "facturacion" ? "active" : ""}>Tablero Facturación RCT</Link>
       <Link href="/diagramas" className={active === "diagramas" ? "active" : ""}>Diagramas</Link>
       <ThemeToggle />
