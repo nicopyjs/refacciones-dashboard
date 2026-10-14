@@ -9,7 +9,7 @@ const MOSTRAR_INSUMOS = false;
 export default function TopNav({
   active,
 }: {
-  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "diagramas";
+  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "rct" | "diagramas";
 }) {
   return (
     <nav className="top-nav">
@@ -29,6 +29,7 @@ export default function TopNav({
         <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
       )}
       <Link href="/facturacion" className={active === "facturacion" ? "active" : ""}>Tablero Facturación RCT</Link>
+      <Link href="/rct" className={active === "rct" ? "active" : ""}>Venta y Gastos RCT</Link>
       <Link href="/diagramas" className={active === "diagramas" ? "active" : ""}>Diagramas</Link>
       <ThemeToggle />
     </nav>
