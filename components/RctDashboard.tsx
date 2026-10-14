@@ -17,7 +17,7 @@ const C_GASTO = "#dc2626";
 const C_UTIL = "#d97706";
 const C_PRES = "#2563eb";
 
-type Eco = "Financiero" | "Economico";
+type Eco = "Con" | "Sin"; // con / sin provisiones
 type Ctl = "year" | "month" | "cn" | "eco";
 interface Filters { year: string; month: string; cn: string; eco: Eco }
 
@@ -203,7 +203,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
 
   const years = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.d.slice(0, 4)))].sort().reverse() : []), [data]);
   const cns = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.cn))].sort() : []), [data]);
-  const [f, setF] = useState<Filters>({ year: "", month: "all", cn: "all", eco: "Financiero" });
+  const [f, setF] = useState<Filters>({ year: "", month: "all", cn: "all", eco: "Con" });
   const year = f.year || years[0] || "all";
   const ff: Filters = { ...f, year };
 
@@ -221,7 +221,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
         (ff.year === "all" || l.d.startsWith(ff.year)) &&
         (ff.month === "all" || l.d.slice(5, 7) === ff.month) &&
         (ff.cn === "all" || l.cn === ff.cn) &&
-        !(ff.eco === "Economico" && l.t === "V" && l.x)
+        !(ff.eco === "Sin" && l.t === "V" && l.x)
     );
     return {
       data,
@@ -317,11 +317,11 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
             </label>
           )}
           {cur.ctl.includes("eco") && (
-            <div className="seg" role="group" aria-label="Financiero o Económico">
-              <span>Financiero o Económico</span>
+            <div className="seg" role="group" aria-label="Provisiones">
+              <span>Provisiones</span>
               <div>
-                {(["Financiero", "Economico"] as Eco[]).map((e) => (
-                  <button key={e} className={ff.eco === e ? "on" : ""} onClick={() => set({ eco: e })}>{e === "Economico" ? "Económico" : "Financiero"}</button>
+                {(["Con", "Sin"] as Eco[]).map((e) => (
+                  <button key={e} className={ff.eco === e ? "on" : ""} onClick={() => set({ eco: e })}>{e === "Sin" ? "Sin provisiones" : "Con provisiones"}</button>
                 ))}
               </div>
             </div>
@@ -342,7 +342,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
 
         <footer className="note">
           <strong>Sobre esta página:</strong> venta = cuentas 3.x y gasto = cuentas 4.x de los centros de negocio RCT, leídas de los Sheets contables
-          (2021–2026). «Económico» omite la cuenta 3110101002; «Financiero» incluye todas. El presupuesto sale de la hoja de costo (PPTOS) y no depende
+          (2021–2026). «Sin provisiones» omite la cuenta de provisión 3110101002; «Con provisiones» la incluye. El presupuesto sale de la hoja de costo (PPTOS) y no depende
           del año ni del mes. Los montos de 2024–2026 coinciden con Power BI.
         </footer>
       </div>
