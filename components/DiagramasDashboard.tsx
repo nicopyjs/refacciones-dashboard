@@ -421,7 +421,7 @@ export default function DiagramasDashboard() {
           <section className="fade" key="metrogas">
             <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
             <h2>Flujo de oferta Metrogas</h2>
-            <p className="sub">Qué pasa dentro de Metrogas desde que el gestor recibe el presupuesto de la empresa hasta que se liberan los códigos de facturación: la oferta (validación legal y comercial), la decisión de la comunidad y la liberación de fondos. Plazo observado: hasta 100 días; la etapa crítica es el certificado de aprobación legal.</p>
+            <p className="sub">Qué pasa dentro de Metrogas desde que el gestor recibe el presupuesto de la empresa hasta que se liberan los códigos de facturación: la oferta (validación legal y comercial), la decisión de la comunidad y la liberación de fondos.</p>
             <MetrogasDiagram />
           </section>
         ) : view === "operaciones" ? (

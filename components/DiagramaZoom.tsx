@@ -35,10 +35,27 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
   const scrollerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [fs, setFs] = useState(false);
+  const fsRef = useRef(false);
+
+  useEffect(() => {
+    const onChange = () => {
+      const on = document.fullscreenElement === boxRef.current;
+      fsRef.current = on;
+      setFs(on);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFs = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else boxRef.current?.requestFullscreen?.();
+  };
 
   // Zoom con la rueda del mouse, anclado en el punto bajo el cursor.
   const ziRef = useRef(zi);
-  const anchor = useRef<{ x: number; y: number; cx: number; from: number } | null>(null);
+  const anchor = useRef<{ x: number; y: number; cx: number; cy: number; from: number } | null>(null);
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -54,7 +71,8 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
       if (next === cur) return;
       const rect = el.getBoundingClientRect();
       const cx = e.clientX - rect.left;
-      anchor.current = { x: (el.scrollLeft + cx) / ZOOMS[cur], y: (e.clientY - rect.top) / ZOOMS[cur], cx, from: ZOOMS[cur] };
+      const cy = e.clientY - rect.top;
+      anchor.current = { x: (el.scrollLeft + cx) / ZOOMS[cur], y: (fsRef.current ? el.scrollTop + cy : cy) / ZOOMS[cur], cx, cy, from: ZOOMS[cur] };
       ziRef.current = next;
       setZi(next);
     };
@@ -68,7 +86,8 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
     if (!a || !el) return;
     anchor.current = null;
     el.scrollLeft = a.x * ZOOMS[zi] - a.cx;
-    window.scrollBy(0, a.y * (ZOOMS[zi] - a.from));
+    if (fsRef.current) el.scrollTop = a.y * ZOOMS[zi] - a.cy;
+    else window.scrollBy(0, a.y * (ZOOMS[zi] - a.from));
   }, [zi]);
 
   // Arrastrar con el mouse para moverse por el diagrama (en táctil ya funciona el scroll nativo).
@@ -82,7 +101,8 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
     const d = drag.current;
     if (!d || !scrollerRef.current) return;
     scrollerRef.current.scrollLeft -= e.clientX - d.x;
-    window.scrollBy(0, -(e.clientY - d.y));
+    if (fsRef.current) scrollerRef.current.scrollTop -= e.clientY - d.y;
+    else window.scrollBy(0, -(e.clientY - d.y));
     drag.current = { x: e.clientX, y: e.clientY };
   };
   const endDrag = () => {
@@ -91,7 +111,7 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
   };
 
   return (
-    <div>
+    <div ref={boxRef} className={fs ? "zoom-fs" : undefined}>
       <div className="venta-bar">
         <div className="legend" style={{ marginTop: 0 }}>
           {legend.map((l) => (
@@ -103,10 +123,13 @@ export default function DiagramaZoom({ html, legend, crop, initialZoom = 3 }: Di
             </span>
           ))}
         </div>
+        <div className="zoom-tools">
+        <button type="button" className="fsbtn" onClick={toggleFs}>{fs ? "Salir de pantalla completa" : "⛶ Pantalla completa"}</button>
         <div className="zoom" role="group" aria-label="Zoom del diagrama">
           <button type="button" onClick={() => setZi((z) => Math.max(0, z - 1))} disabled={zi === 0} aria-label="Alejar">−</button>
           <span>{Math.round(s * 100)}%</span>
           <button type="button" onClick={() => setZi((z) => Math.min(ZOOMS.length - 1, z + 1))} disabled={zi === ZOOMS.length - 1} aria-label="Acercar">+</button>
+        </div>
         </div>
       </div>
       <div
