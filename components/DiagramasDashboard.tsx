@@ -352,6 +352,55 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
   );
 }
 
+// Diagrama con scroll propio y botón de pantalla completa (en pantalla completa se mueve arrastrando).
+function FsDiagram({ spec }: { spec: Spec }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const [fs, setFs] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setFs(document.fullscreenElement === boxRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggle = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else boxRef.current?.requestFullscreen?.();
+  };
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!fs || e.pointerType !== "mouse" || e.button !== 0) return;
+    drag.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current, el = scrollRef.current;
+    if (!d || !el) return;
+    el.scrollLeft -= e.clientX - d.x;
+    el.scrollTop -= e.clientY - d.y;
+    drag.current = { x: e.clientX, y: e.clientY };
+  };
+
+  return (
+    <div ref={boxRef} className={fs ? "zoom-fs" : undefined}>
+      <div className="venta-bar" style={{ justifyContent: "flex-end" }}>
+        <button type="button" className="fsbtn" onClick={toggle}>{fs ? "Salir de pantalla completa" : "⛶ Pantalla completa"}</button>
+      </div>
+      <div
+        ref={scrollRef}
+        className="scroller"
+        style={fs ? { flex: 1, minHeight: 0, overflow: "auto", cursor: "grab", userSelect: "none" } : undefined}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={() => { drag.current = null; }}
+        onPointerCancel={() => { drag.current = null; }}
+      >
+        <Diagram spec={spec} />
+      </div>
+    </div>
+  );
+}
+
 export default function DiagramasDashboard() {
   const router = useRouter();
   const [view, setView] = useState<string>("general");
@@ -415,7 +464,7 @@ export default function DiagramasDashboard() {
             <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
             <h2>Ingeniería y gestión</h2>
             <p className="sub">Va del traspaso comercial a la entrega de EE.TT. y planimetría. El envío de la Gantt abre la reunión de inicio, y esta abre la facturación del 50% a Metrogas y de la 1ª cuota a la comunidad. Si la ingeniería de detalle no cumple, vuelve a la visita inicial o a la ingeniería según el tipo de falla. Operaciones parte un mes después de facturar el anticipo.</p>
-            <div className="scroller"><Diagram spec={ingenieria} /></div>
+            <FsDiagram spec={ingenieria} />
           </section>
         ) : view === "metrogas" ? (
           <section className="fade" key="metrogas">
@@ -429,7 +478,7 @@ export default function DiagramasDashboard() {
             <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
             <h2>Operaciones</h2>
             <p className="sub">Tiene dos etapas. La etapa 1, Preparación, parte cuando Ingeniería y gestión entrega las EE.TT. y la planimetría, y deja la obra lista: Gantt de compromiso, visita, temas operativos, pedido de equipos y cubicación. La etapa 2, Ejecución, parte en el inicio del proyecto, corre en paralelo con la certificación y termina con la documentación a la comunidad. Los plazos son de referencia, tomados de la Carta Gantt de Tarapacá.</p>
-            <div className="scroller"><Diagram spec={operaciones} /></div>
+            <FsDiagram spec={operaciones} />
           </section>
         ) : view === "certificacion" ? (
           <section className="fade" key="certificacion">
@@ -449,7 +498,7 @@ export default function DiagramasDashboard() {
             <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
             <h2>Entrega y puesta en régimen</h2>
             <p className="sub">Parte con la revisión GIO y la facturación del 35%. Refacciones mantiene el foco de ingeniería los primeros 3 meses; TyP sigue hasta el mes 12 y luego pasa a Servicio técnico.</p>
-            <div className="scroller"><Diagram spec={detail} /></div>
+            <FsDiagram spec={detail} />
             <p className="note">Garantías: se informan siempre a Refacciones; si no puede tomarlas, las ejecuta TyP. Se resuelven en 24 h si está en riesgo el agua caliente sanitaria; si no, a más tardar en la próxima mantención.</p>
           </section>
         )}
