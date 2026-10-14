@@ -6,6 +6,7 @@ import TopNav from "./TopNav";
 import VentaDiagram from "./VentaDiagram";
 import ContratoDiagram from "./ContratoDiagram";
 import CertificacionDiagram from "./CertificacionDiagram";
+import MetrogasDiagram from "./MetrogasDiagram";
 import "../app/dashboard.css";
 import "../app/diagramas/diagramas.css";
 
@@ -35,7 +36,7 @@ const overview: Spec = {
     { id: "v", lane: "ref", link: "venta", x: 20, y: 90, tag: "Venta", title: "Venta", sub: "Del prospecto al cierre" },
     { id: "c", lane: "ref", link: "contrato", x: 230, y: 90, tag: "Contrato", title: "Contrato", sub: "Formalización con el cliente" },
     { id: "ip", lane: "ref", link: "ingenieria", x: 440, y: 90, w: 190, tag: "Ingeniería", title: "Ingeniería y gestión", sub: "Del traspaso comercial a la entrega de EE.TT. y planos" },
-    { id: "e", lane: "ref", x: 690, y: 18, tag: "Operaciones", title: "Operaciones", sub: "Planificación y ejecución" },
+    { id: "e", lane: "ref", link: "operaciones", x: 690, y: 18, tag: "Operaciones", title: "Operaciones", sub: "Planificación y ejecución" },
     { id: "ce", lane: "ref", link: "certificacion", x: 690, y: 138, tag: "Certificación", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
     { id: "en", lane: "ref", x: 940, y: 90, w: 210, tag: "Entrega", title: "Entrega y puesta en régimen", sub: "Detalle en su diagrama", focus: true, link: "detalle" },
   ],
@@ -74,6 +75,57 @@ const ingenieria: Spec = {
     { f: "i8", t: "i9", style: "ok", label: "Sí" },
     { f: "i9", t: "i10", label: "Aprobado" },
     { f: "i10", t: "o1" },
+  ],
+};
+
+const otros: Spec = {
+  width: 1260,
+  lanes: [{ id: "mg", label: "Metrogas", color: C.orange, tint: "var(--tint-orange)", h: 200 }],
+  nodes: [
+    { id: "of", lane: "mg", link: "metrogas", x: 20, y: 55, w: 250, tag: "Metrogas", title: "Flujo de oferta Metrogas", sub: "De la oferta a la liberación de códigos de facturación" },
+  ],
+  edges: [],
+};
+
+const operaciones: Spec = {
+  width: 2420,
+  phases: [
+    { x0: 0, x1: 1010, label: "Etapa 1 · Preparación" },
+    { x0: 1020, x1: 2080, label: "Etapa 2 · Ejecución · ref. Tarapacá ~11 semanas" },
+    { x0: 2090, x1: 2310, label: "Cierre" },
+  ],
+  lanes: [
+    { id: "adm", label: "Administración", color: C.green, tint: "var(--tint-slate)", h: 100 },
+    { id: "sup", label: "Supervisión", color: C.teal, tint: "var(--tint-teal)", h: 250 },
+    { id: "eje", label: "Terreno", color: C.teal, tint: "var(--tint-teal)", h: 290 },
+    { id: "ext", label: "Otros procesos", color: C.slate, tint: "var(--tint-slate)", h: 110 },
+  ],
+  nodes: [
+    { id: "a0", lane: "adm", x: 830, y: 20, w: 180, kind: "hito", title: "Códigos y facturación del anticipo", sub: "Viene de Ingeniería y gestión" },
+    { id: "in0", lane: "sup", x: 20, y: 20, w: 170, ghost: true, color: C.slate, tag: "Proceso anterior", title: "Ingeniería y gestión", sub: "Punto 9: EE.TT. y planimetría" },
+    { id: "s1", lane: "sup", x: 220, y: 20, w: 170, num: 1, tag: "Planificación", title: "Carta Gantt de compromiso" },
+    { id: "s2", lane: "sup", x: 420, y: 20, w: 170, num: 2, tag: "Supervisión", title: "Visita de supervisión" },
+    { id: "s3", lane: "sup", x: 620, y: 20, w: 180, num: 3, tag: "Supervisión", title: "Temas operativos y logísticos" },
+    { id: "s4", lane: "sup", x: 830, y: 20, w: 180, num: 4, tag: "Compras", title: "Pedido de equipos", items: ["Requiere el anticipo facturado", "Excepción formal por plazo de entrega"] },
+    { id: "s5", lane: "sup", x: 830, y: 150, w: 180, num: 5, tag: "Planificación", title: "Cubicación de detalle" },
+    { id: "s6", lane: "sup", x: 1430, y: 60, w: 420, num: 10, tag: "Supervisión", title: "Corroboración del proyecto", sub: "Durante toda la obra · ref. Tarapacá: 37 días" },
+    { id: "s7", lane: "sup", x: 2110, y: 40, w: 190, num: 11, tag: "Entrega final", title: "Documentación a la comunidad", sub: "Acta de entrega y cartas 35% y 15%" },
+    { id: "e0", lane: "eje", x: 1030, y: 20, w: 160, kind: "hito", title: "Inicio del proyecto", sub: "1 mes después del anticipo" },
+    { id: "e1", lane: "eje", x: 1220, y: 20, w: 190, num: 6, tag: "Equipo hidráulico", title: "Circuito primario", sub: "Ref. Tarapacá: 8 días", items: ["Desarme y chatarreo", "Montaje de calderas", "Colectores, red de gas y chimeneas", "Conexión de gas, eléctrica e hidráulica", "Puesta en marcha calderas"] },
+    { id: "e2", lane: "eje", x: 1430, y: 20, w: 200, num: 7, tag: "Equipo hidráulico", title: "Circuito secundario", sub: "Ref. Tarapacá: 27 días", items: ["Intercambiadores de calor", "Ánodos y limpieza del acumulador", "Bombas, estanque e instrumentación", "Puesta en marcha acumulador", "Pruebas de funcionamiento"] },
+    { id: "e3", lane: "eje", x: 1650, y: 20, w: 190, num: 8, tag: "Obras civiles", title: "Aislación y terminaciones", sub: "Ref. Tarapacá: 11 días", items: ["Aislación", "Terminaciones de sala", "Término de sala"] },
+    { id: "e4", lane: "eje", x: 1860, y: 20, w: 200, num: 9, tag: "Eléctrico", title: "Instalación eléctrica y control", sub: "Ref. Tarapacá: 12 días", items: ["Canalización y alambrado", "Tablero eléctrico", "Monitoreo y control"] },
+    { id: "x1", lane: "ext", x: 1030, y: 20, w: 400, ghost: true, color: C.slate, tag: "Proceso paralelo", title: "Certificación", sub: "Sello Verde, TC5, TE1, GIO y SEREMI" },
+    { id: "x2", lane: "ext", x: 2110, y: 20, w: 190, ghost: true, color: C.slate, tag: "Proceso siguiente", title: "Entrega y puesta en régimen", sub: "Hito 0: revisión GIO" },
+  ],
+  edges: [
+    { f: "in0", t: "s1" }, { f: "s1", t: "s2" }, { f: "s2", t: "s3" }, { f: "s3", t: "s4" }, { f: "s3", t: "s5" },
+    { f: "a0", t: "s4", label: "Habilita" },
+    { f: "s4", t: "e0" }, { f: "s5", t: "e0" },
+    { f: "e0", t: "e1" }, { f: "e1", t: "e2" }, { f: "e2", t: "e3" }, { f: "e3", t: "e4" },
+    { f: "e4", t: "s7" }, { f: "s7", t: "x2" },
+    { f: "e0", t: "x1", style: "dot", label: "En paralelo" },
+    { f: "x1", t: "x2", style: "dot", label: "Cartas firmadas y GIO" },
   ],
 };
 
@@ -125,7 +177,7 @@ const detail: Spec = {
   ],
 };
 
-const TITULOS: Record<string, string> = { venta: "Venta", contrato: "Contrato", ingenieria: "Ingeniería y gestión", certificacion: "Certificación" };
+const TITULOS: Record<string, string> = { venta: "Venta", contrato: "Contrato", ingenieria: "Ingeniería y gestión", certificacion: "Certificación", metrogas: "Flujo de oferta Metrogas" };
 
 const STYLES: Record<EdgeStyle, { stroke: string; dash: string; w: number }> = {
   solid: { stroke: C.line, dash: "", w: 1.5 },
@@ -339,6 +391,10 @@ export default function DiagramasDashboard() {
             <h2>Flujo general del área</h2>
             <p className="sub">Después del contrato, Ingeniería y gestión entrega las especificaciones y planos para operaciones. La certificación corre en paralelo a operaciones y tiene su propio diagrama; ambas convergen en la entrega y puesta en régimen. Haz click en una etapa para ver su detalle.</p>
             <div className="scroller"><Diagram spec={overview} onOpen={setView} /></div>
+            <hr className="sep" />
+            <h2>Otros procesos</h2>
+            <p className="sub">Procesos de otras áreas y de Metrogas que se relacionan con Refacciones.</p>
+            <div className="scroller"><Diagram spec={otros} onOpen={setView} /></div>
           </section>
         ) : view === "venta" ? (
           <section className="fade" key="venta">
@@ -360,6 +416,20 @@ export default function DiagramasDashboard() {
             <h2>Ingeniería y gestión</h2>
             <p className="sub">Va del traspaso comercial a la entrega de EE.TT. y planimetría. El envío de la Gantt abre la reunión de inicio, y esta abre la facturación del 50% a Metrogas y de la 1ª cuota a la comunidad. Si la ingeniería de detalle no cumple, vuelve a la visita inicial o a la ingeniería según el tipo de falla. Operaciones parte un mes después de facturar el anticipo.</p>
             <div className="scroller"><Diagram spec={ingenieria} /></div>
+          </section>
+        ) : view === "metrogas" ? (
+          <section className="fade" key="metrogas">
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>Flujo de oferta Metrogas</h2>
+            <p className="sub">Qué pasa dentro de Metrogas desde que el gestor recibe el presupuesto de la empresa hasta que se liberan los códigos de facturación: la oferta (validación legal y comercial), la decisión de la comunidad y la liberación de fondos. Plazo observado: hasta 100 días; la etapa crítica es el certificado de aprobación legal.</p>
+            <MetrogasDiagram />
+          </section>
+        ) : view === "operaciones" ? (
+          <section className="fade" key="operaciones">
+            <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
+            <h2>Operaciones</h2>
+            <p className="sub">Tiene dos etapas. La etapa 1, Preparación, parte cuando Ingeniería y gestión entrega las EE.TT. y la planimetría, y deja la obra lista: Gantt de compromiso, visita, temas operativos, pedido de equipos y cubicación. La etapa 2, Ejecución, parte en el inicio del proyecto, corre en paralelo con la certificación y termina con la documentación a la comunidad. Los plazos son de referencia, tomados de la Carta Gantt de Tarapacá.</p>
+            <div className="scroller"><Diagram spec={operaciones} /></div>
           </section>
         ) : view === "certificacion" ? (
           <section className="fade" key="certificacion">

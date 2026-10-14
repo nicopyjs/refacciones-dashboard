@@ -32,6 +32,7 @@ html[data-theme="dark"] .dg{
 .dg section{margin-bottom:40px}
 .dg h2{font-size:17px;font-weight:700;margin:0 0 4px;color:var(--text)}
 .dg .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px;max-width:720px}
+.dg .sep{border:0;border-top:1px solid var(--rule);margin:44px 0 28px}
 .dg .backbtn{display:inline-flex;align-items:center;gap:6px;font:600 12.5px inherit;font-family:inherit;color:var(--text);background:var(--panel);border:1px solid var(--rule);border-radius:999px;padding:7px 14px;cursor:pointer;margin-bottom:16px;transition:border-color .14s ease,background .14s ease}
 .dg .backbtn:hover{border-color:var(--line)}
 .dg .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px}
