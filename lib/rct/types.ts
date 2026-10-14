@@ -1,26 +1,15 @@
-export type AreaRct = "RCT" | "INTA";
-export type TipoCuenta = "Gasto" | "Ganancia";
-
-/** Movimiento contable agregado por mes, centro de negocio agrupado y alias de cuenta. */
-export interface GlRow {
-  ym: string; // "2026-05"
-  area: AreaRct;
+/** Línea contable de resultado (cuentas 3.x venta / 4.x gasto) de un centro de negocio RCT. */
+export interface LineRow {
+  d: string; // fecha "2026-05-13"
   cn: string; // CN AGRUPADO
-  alias: string; // alias de la cuenta contable (PlanesCuenta)
-  tipo: TipoCuenta;
-  monto: number; // credit<>0 ? credit : -debit (gasto negativo, ganancia positiva)
-}
-
-/** Línea contable de gasto para la tabla "Detalles facturación DF". */
-export interface DetalleRow {
-  date: string; // "2026-05-13"
-  c1: string;
-  c2: string;
-  comment: string;
-  alias: string;
-  cnDesc: string;
-  cn: string;
-  monto: number;
+  cd: string; // descripción del centro de negocio
+  c1: string; // clasificador 1
+  c2: string; // clasificador 2
+  cm: string; // glosa
+  al: string; // alias de la cuenta contable
+  t: "G" | "V"; // G = gasto (cuentas 4), V = venta/ganancia (cuentas 3)
+  m: number; // credit<>0 ? credit : -debit (gasto negativo, venta positiva)
+  x?: 1; // cuenta 3110101002 (se omite en la vista "Económico")
 }
 
 /** Presupuesto (hoja de costo) agregado por obra y alias. */
@@ -28,58 +17,20 @@ export interface PptoRow {
   cn: string; // Nombre CN sin numeros (se cruza con CN AGRUPADO)
   alias: string;
   tipo: string; // CONTRATO | ADICIONAL
-  importe: number;
-}
-
-export interface PptoGastoRow {
-  ym: string;
-  area: string;
-  monto: number;
-}
-
-export interface AdicionalRow {
-  obra: string;
-  tipo: string;
-  codigo: string;
-  asunto: string;
-  valorUf: number;
-  estado: string;
-  fechaApr: string | null;
-  fac: string;
-  fechaFac: string | null;
-  montoClp: number;
-}
-
-export interface ObraSupervisorRow {
-  obra: string;
-  supervisor: string;
+  importe: number; // venta positiva, gasto negativo
 }
 
 export interface RctData {
   generatedAt: string;
   ledgerRows: number;
   ledgerLastDate: string;
-  gl: GlRow[];
-  detalleIndirectos: DetalleRow[];
+  lines: LineRow[];
   ppto: PptoRow[];
-  pptoGastos: PptoGastoRow[];
-  adicionales: AdicionalRow[];
-  obraSupervisor: ObraSupervisorRow[];
+  /** [rut, nombre] del maestro de empleados. */
+  empleados: [string, string][];
   /** CN AGRUPADO válidos del maestro de centros (los presupuestos solo se cruzan con estos). */
   cnList: string[];
 }
-
-/** Cabeceras de los sheets de movimientos que usamos (se validan al leer). */
-export const MOV_COLUMNS = {
-  accountCode: "B",
-  debit: "C",
-  credit: "D",
-  comment: "H",
-  bussinessCenterId: "O",
-  classifier1Id: "P",
-  classifier2Id: "Q",
-  date: "Y",
-} as const;
 
 /** Fila reducida de un sheet de movimientos. */
 export type MovRow = {
@@ -98,7 +49,5 @@ export interface BuildInputs {
   planes: unknown[][]; // incluye cabecera
   idcn: unknown[][];
   pptos: unknown[][];
-  pptoGastos: unknown[][];
-  adicionales: unknown[][];
-  obraSupervisor: unknown[][];
+  empleados: unknown[][];
 }

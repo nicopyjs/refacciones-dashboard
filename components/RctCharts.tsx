@@ -224,6 +224,44 @@ export function HBars({
   );
 }
 
+/** Medidor semicircular de avance (0–100 %; pasa de 100 % se marca completo). */
+export function Gauge({ pct, color, label, left, right }: { pct: number | null; color: string; label: string; left: string; right: string }) {
+  const p = pct === null || !Number.isFinite(pct) ? 0 : Math.max(0, Math.min(pct, 1));
+  const R = 60;
+  const cx = 80;
+  const cy = 82;
+  const pt = (f: number) => {
+    const a = Math.PI * (1 - f);
+    return `${cx + R * Math.cos(a)},${cy - R * Math.sin(a)}`;
+  };
+  return (
+    <div className="rct-gauge">
+      <svg viewBox="0 0 160 100" role="img" aria-label={`${label}: ${fmtPct(pct)}`}>
+        <path d={`M${pt(0)}A${R},${R} 0 0 1 ${pt(1)}`} fill="none" stroke="var(--surface-2)" strokeWidth="16" strokeLinecap="round" />
+        {p > 0 && <path d={`M${pt(0)}A${R},${R} 0 ${p > 0.5 ? 1 : 0} 1 ${pt(p)}`} fill="none" stroke={color} strokeWidth="16" strokeLinecap="round" />}
+        <text x={cx} y={cy - 8} textAnchor="middle" className="rct-gauge-v">{fmtPct(pct)}</text>
+        <text x={cx - R} y={cy + 14} textAnchor="middle" className="rct-axis">{left}</text>
+        <text x={cx + R} y={cy + 14} textAnchor="middle" className="rct-axis">{right}</text>
+      </svg>
+      <div className="rct-gauge-l">{label}</div>
+    </div>
+  );
+}
+
+/** Barra de avance con marca de meta. */
+export function Bullet({ value, target, color, label }: { value: number; target: number; color: string; label: string }) {
+  const max = Math.max(Math.abs(value), Math.abs(target), 1) * 1.15;
+  return (
+    <div className="rct-bullet">
+      <div className="rct-bullet-h"><span>{label}</span><b>{fmtCompact(value)} / {fmtCompact(target)}</b></div>
+      <div className="rct-bullet-track">
+        <div style={{ width: `${(Math.abs(value) / max) * 100}%`, background: color }} />
+        <i style={{ left: `${(Math.abs(target) / max) * 100}%` }} title={`Presupuestado: ${fmtCLP(target)}`} />
+      </div>
+    </div>
+  );
+}
+
 /** Torta con leyenda. */
 export function Pie({ slices, format = (n: number) => fmtNum(n) }: { slices: { label: string; value: number; color?: string }[]; format?: (n: number) => string }) {
   const total = slices.reduce((s, x) => s + x.value, 0);

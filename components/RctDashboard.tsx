@@ -2,57 +2,109 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { RctData, GlRow } from "@/lib/rct/types";
+import type { LineRow, PptoRow, RctData } from "@/lib/rct/types";
 import TopNav from "./TopNav";
-import { HBars, Pie, SeriesChart, Stacked100, fmtCLP, fmtCompact, fmtNum, fmtPct, labelYm, type Series } from "./RctCharts";
+import { Bullet, Gauge, HBars, SeriesChart, fmtCLP, fmtNum, fmtPct, labelYm } from "./RctCharts";
 import "../app/dashboard.css";
 import "../app/rct/rct.css";
 
 const CN_INDIRECTOS = "RCTA - GENERAL REFACCION CENTRALES TERMICAS";
 const MANO_OBRA = new Set(["MANO DE OBRA DIRECTA", "MANO DE OBRA G.A.F", "MANO DE OBRA HONORARIOS", "MANO DE OBRA INDIRECTA", "MANO DE OBRA"]);
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-const TABS = [
-  { id: "indirectos", label: "Gastos Indirectos RCT" },
-  { id: "ventaInta", label: "Venta vs Hoja de Costo (INTA)" },
-  { id: "materiales", label: "Análisis de Gasto Materiales" },
-  { id: "adicionales", label: "Análisis PPTOS adicionales" },
-  { id: "avance", label: "Avance operativo" },
-  { id: "ventaRct", label: "Venta vs Hoja de Costo" },
-  { id: "gastoRct", label: "Gasto vs Hoja de Costo" },
-] as const;
-type TabId = (typeof TABS)[number]["id"];
+const C_VENTA = "#16a34a";
+const C_GASTO = "#dc2626";
+const C_UTIL = "#d97706";
+const C_PRES = "#2563eb";
+
+type Eco = "Financiero" | "Economico";
+type Ctl = "year" | "month" | "cn" | "eco";
+interface Filters { year: string; month: string; cn: string; eco: Eco }
+
+const TABS: { id: string; label: string; ctl: Ctl[]; project?: boolean }[] = [
+  { id: "ventas", label: "Ventas RCT", ctl: ["year", "month", "cn", "eco"] },
+  { id: "directos", label: "Gastos Directos RCT", ctl: ["year", "month", "cn"] },
+  { id: "indirectos", label: "Gastos Indirectos RCT", ctl: ["year", "month", "cn"] },
+  { id: "utilidad", label: "Utilidad RCT", ctl: ["year", "month", "cn", "eco"] },
+  { id: "resumen", label: "Resumen Económico RCT", ctl: ["year", "month", "cn", "eco"] },
+  { id: "ventaHc", label: "Venta vs Hoja de Costo", ctl: ["year", "month", "cn", "eco"], project: true },
+  { id: "gastoHc", label: "Gasto vs Hoja de Costo", ctl: ["year", "month", "cn"], project: true },
+  { id: "resultado", label: "Resultado vs Hoja de Costo", ctl: ["year", "month", "cn", "eco"], project: true },
+  { id: "mano", label: "Análisis de Gasto Mano de Obra", ctl: ["year", "month", "cn"], project: true },
+  { id: "materiales", label: "Análisis de Gasto Materiales", ctl: ["year", "month", "cn"], project: true },
+  { id: "avance", label: "% de Avance vs HC", ctl: ["year", "month", "cn", "eco"], project: true },
+];
 
 const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0);
+const div = (a: number, b: number): number | null => (b ? a / b : null);
 
-/** Meses consecutivos entre el primero y el último (para que el eje X no tenga saltos). */
 function monthRange(yms: string[]): string[] {
   if (yms.length === 0) return [];
-  const sorted = [...yms].sort();
+  const sorted = [...new Set(yms)].sort();
   const [y0, m0] = sorted[0].split("-").map(Number);
   const [y1, m1] = sorted[sorted.length - 1].split("-").map(Number);
   const out: string[] = [];
-  for (let y = y0, m = m0; y < y1 || (y === y1 && m <= m1); m++) {
-    if (m > 12) { m = 1; y++; }
+  let y = y0;
+  let m = m0;
+  while (y < y1 || (y === y1 && m <= m1)) {
     out.push(`${y}-${String(m).padStart(2, "0")}`);
-    if (y === y1 && m === m1) break;
+    m++;
+    if (m > 12) { m = 1; y++; }
   }
   return out;
 }
 
-function byMonth(rows: GlRow[], months: string[], sign = 1): number[] {
-  const m = new Map<string, number>();
-  for (const r of rows) m.set(r.ym, (m.get(r.ym) ?? 0) + r.monto);
-  return months.map((k) => (m.get(k) ?? 0) * sign);
+function monthly(lines: LineRow[], months: string[], sign = 1): number[] {
+  const acc = new Map<string, number>();
+  for (const l of lines) acc.set(l.d.slice(0, 7), (acc.get(l.d.slice(0, 7)) ?? 0) + l.m);
+  return months.map((m) => (acc.get(m) ?? 0) * sign);
 }
 
 function cumulative(v: number[]): number[] {
-  let acc = 0;
-  return v.map((x) => (acc += x));
+  let a = 0;
+  return v.map((x) => (a += x));
 }
 
-function Tile({ v, l, color }: { v: string; l: string; color?: string }) {
+function groupBy(lines: LineRow[], key: (l: LineRow) => string, sign = 1) {
+  const m = new Map<string, number>();
+  for (const l of lines) m.set(key(l), (m.get(key(l)) ?? 0) + l.m * sign);
+  return [...m.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+}
+
+function normRut(s: string) {
+  return s.replace(/[.\s]/g, "").toUpperCase();
+}
+
+/* ───────────── Presupuesto ───────────── */
+interface Pres {
+  ventaContrato: number;
+  ventaAdicional: number;
+  ventaTotal: number;
+  gasto: number; // positivo
+  mo: number; // positivo
+  materiales: number; // positivo
+  utilidad: number;
+  porAlias: Map<string, number>; // gasto presupuestado positivo por alias
+  hay: boolean;
+}
+
+function presupuesto(rows: PptoRow[], cnSet: Set<string>, cn: string): Pres {
+  const sel = rows.filter((r) => cnSet.has(r.cn) && (cn === "all" || r.cn === cn));
+  const ventaContrato = sum(sel.filter((r) => r.alias === "VENTA" && r.tipo === "CONTRATO"), (r) => r.importe);
+  const ventaAdicional = sum(sel.filter((r) => r.alias === "VENTA" && r.tipo !== "CONTRATO"), (r) => r.importe);
+  const porAlias = new Map<string, number>();
+  for (const r of sel) if (r.alias !== "VENTA" && r.alias) porAlias.set(r.alias, (porAlias.get(r.alias) ?? 0) - r.importe);
+  const gasto = sum([...porAlias.values()], (x) => x);
+  const mo = sum([...porAlias.entries()].filter(([a]) => MANO_OBRA.has(a)), ([, v]) => v);
+  const ventaTotal = ventaContrato + ventaAdicional;
+  return { ventaContrato, ventaAdicional, ventaTotal, gasto, mo, materiales: gasto - mo, utilidad: ventaTotal - gasto, porAlias, hay: sel.length > 0 };
+}
+
+/* ───────────── UI base ───────────── */
+function Kpi({ v, l, tone, big }: { v: string; l: string; tone?: "good" | "bad" | "warn"; big?: boolean }) {
+  const color = tone === "good" ? "var(--status-good)" : tone === "bad" ? "var(--status-critical)" : tone === "warn" ? "var(--status-warning)" : undefined;
   return (
-    <div className="stat-tile">
+    <div className={`stat-tile${big ? " rct-kpi-big" : ""}`}>
       <div className="v" style={color ? { color } : undefined}>{v}</div>
       <div className="l">{l}</div>
     </div>
@@ -69,20 +121,121 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-function pctColor(p: number | null) {
+const money = (n: number | null) => (n === null ? "—" : fmtCLP(n));
+const pctTone = (p: number | null, invert = false): "good" | "bad" | "warn" | undefined => {
   if (p === null) return undefined;
-  return p > 1 ? "var(--status-critical)" : p >= 0.85 ? "var(--status-warning)" : "var(--status-good)";
+  if (invert) return p > 1 ? "bad" : p >= 0.85 ? "warn" : "good"; // gasto: pasarse es malo
+  return p >= 1 ? "good" : p >= 0.5 ? "warn" : undefined;
+};
+
+interface Col { h: string; get: (l: LineRow) => string; right?: boolean; wrap?: boolean }
+
+function LinesTable({ title, hint, rows, cols, totals }: { title: string; hint?: string; rows: LineRow[]; cols: Col[]; totals: { label: string; f: (l: LineRow) => number }[] }) {
+  const [q, setQ] = useState("");
+  const ql = q.trim().toLowerCase();
+  const shown = ql ? rows.filter((l) => `${l.cn} ${l.cd} ${l.c1} ${l.c2} ${l.cm} ${l.al}`.toLowerCase().includes(ql)) : rows;
+  return (
+    <section className="summary">
+      <h2>{title}</h2>
+      {hint && <p className="hint">{hint}</p>}
+      <input className="search-box" type="text" placeholder="Buscar en centro de negocio, glosa, clasificadores o cuenta…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="table-scroll" style={{ maxHeight: 460, overflowY: "auto" }}>
+        <table className="data-table">
+          <thead>
+            <tr>{cols.map((c) => <th key={c.h} style={c.right ? { textAlign: "right" } : undefined}>{c.h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {shown.slice(0, 300).map((l, i) => (
+              <tr key={i}>
+                {cols.map((c) => (
+                  <td key={c.h} className={c.wrap ? "wrap-col" : undefined} style={c.right ? { textAlign: "right" } : undefined}>{c.get(l) || "—"}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint" style={{ marginTop: 8 }}>
+        {shown.length > 300 ? `Mostrando 300 de ${fmtNum(shown.length)} líneas; usa el buscador para acotar. ` : `${fmtNum(shown.length)} líneas. `}
+        <strong>Total: </strong>
+        {totals.map((t) => `${t.label} ${fmtCLP(sum(shown, t.f))}`).join(" · ")}
+      </p>
+    </section>
+  );
 }
 
+const C = {
+  cn: { h: "Centro de negocio", get: (l: LineRow) => l.cn },
+  cd: { h: "Descripción CN", get: (l: LineRow) => l.cd },
+  fecha: { h: "Fecha", get: (l: LineRow) => l.d },
+  c1: { h: "Clasificador 1", get: (l: LineRow) => l.c1 },
+  c2: { h: "Clasificador 2", get: (l: LineRow) => l.c2 },
+  desc: { h: "Descripción", get: (l: LineRow) => l.cm, wrap: true },
+  cuenta: { h: "Cuenta", get: (l: LineRow) => l.al },
+};
+
+/* ───────────── Contexto filtrado ───────────── */
+interface Ctx {
+  data: RctData;
+  f: Filters;
+  all: LineRow[]; // todas las líneas del filtro
+  ventas: LineRow[];
+  gastos: LineRow[];
+  months: string[];
+  cnSet: Set<string>;
+  pres: Pres;
+  proyecto: string;
+}
+
+function monthsOf(lines: LineRow[], f: Filters): string[] {
+  const ym = lines.map((l) => l.d.slice(0, 7));
+  if (f.year !== "all" && f.month === "all") {
+    const r = monthRange(ym);
+    return r.length ? r : [];
+  }
+  return monthRange(ym);
+}
+
+/* ───────────── Componente principal ───────────── */
 export default function RctDashboard({ data, error, generatedAt, stale }: { data: RctData | null; error: string | null; generatedAt: string; stale: boolean }) {
   const router = useRouter();
-  const [tab, setTab] = useState<TabId>("indirectos");
+  const [tab, setTab] = useState(TABS[0].id);
+
+  const years = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.d.slice(0, 4)))].sort().reverse() : []), [data]);
+  const cns = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.cn))].sort() : []), [data]);
+  const [f, setF] = useState<Filters>({ year: "", month: "all", cn: "all", eco: "Financiero" });
+  const year = f.year || years[0] || "all";
+  const ff: Filters = { ...f, year };
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
     router.push("/");
     router.refresh();
   }
+
+  const ctx = useMemo<Ctx | null>(() => {
+    if (!data) return null;
+    const cnSet = new Set(data.cnList);
+    const all = data.lines.filter(
+      (l) =>
+        (ff.year === "all" || l.d.startsWith(ff.year)) &&
+        (ff.month === "all" || l.d.slice(5, 7) === ff.month) &&
+        (ff.cn === "all" || l.cn === ff.cn) &&
+        !(ff.eco === "Economico" && l.t === "V" && l.x)
+    );
+    return {
+      data,
+      f: ff,
+      all,
+      ventas: all.filter((l) => l.t === "V"),
+      gastos: all.filter((l) => l.t === "G"),
+      months: monthsOf(all, ff),
+      cnSet,
+      pres: presupuesto(data.ppto, cnSet, ff.cn),
+      proyecto: ff.cn === "all" ? "Todos los centros de negocio" : ff.cn,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, ff.year, ff.month, ff.cn, ff.eco]);
 
   const head = (
     <>
@@ -93,7 +246,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
         <div className="meta">
           {data && (
             <>
-              <span>Movimientos hasta <strong style={{ color: "var(--text-secondary)" }}>{data.ledgerLastDate}</strong> · {fmtNum(data.ledgerRows)} líneas contables</span>
+              <span>Movimientos hasta <strong style={{ color: "var(--text-secondary)" }}>{data.ledgerLastDate}</strong> · {fmtNum(data.ledgerRows)} líneas contables leídas</span>
               <span className="dot" />
               <span>Calculado {new Date(generatedAt).toLocaleString("es-CL")}{stale ? " · actualizando en segundo plano" : ""}</span>
               <span className="dot" />
@@ -107,7 +260,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
     </>
   );
 
-  if (error || !data) {
+  if (error || !data || !ctx) {
     return (
       <div className="viz-root">
         <div className="wrap">
@@ -120,6 +273,9 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
     );
   }
 
+  const cur = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const set = (p: Partial<Filters>) => setF({ ...ff, ...p });
+
   return (
     <div className="viz-root">
       <div className="wrap">
@@ -131,390 +287,521 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
             </button>
           ))}
         </div>
-        {tab === "indirectos" && <Indirectos data={data} />}
-        {tab === "ventaInta" && <VentaHc data={data} area="INTA" titulo="INTA (Instalaciones)" />}
-        {tab === "materiales" && <Materiales data={data} />}
-        {tab === "adicionales" && <Adicionales data={data} />}
-        {tab === "avance" && <Avance data={data} />}
-        {tab === "ventaRct" && <VentaHc data={data} area="RCT" titulo="RCT (Refacciones)" />}
-        {tab === "gastoRct" && <GastoHc data={data} />}
+
+        <div className="rct-filters">
+          {cur.ctl.includes("year") && (
+            <label>
+              <span>Año de análisis</span>
+              <select value={ff.year} onChange={(e) => set({ year: e.target.value })}>
+                <option value="all">Todos</option>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </label>
+          )}
+          {cur.ctl.includes("month") && (
+            <label>
+              <span>Mes</span>
+              <select value={ff.month} onChange={(e) => set({ month: e.target.value })}>
+                <option value="all">Todos</option>
+                {MESES.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
+              </select>
+            </label>
+          )}
+          {cur.ctl.includes("cn") && (
+            <label className="wide">
+              <span>{cur.project ? "Proyecto" : "Centro de negocio"}</span>
+              <select value={ff.cn} onChange={(e) => set({ cn: e.target.value })}>
+                <option value="all">Todas</option>
+                {cns.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+          )}
+          {cur.ctl.includes("eco") && (
+            <div className="seg" role="group" aria-label="Financiero o Económico">
+              <span>Financiero o Económico</span>
+              <div>
+                {(["Financiero", "Economico"] as Eco[]).map((e) => (
+                  <button key={e} className={ff.eco === e ? "on" : ""} onClick={() => set({ eco: e })}>{e === "Economico" ? "Económico" : "Financiero"}</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {tab === "ventas" && <Ventas c={ctx} />}
+        {tab === "directos" && <Gastos c={ctx} indirectos={false} />}
+        {tab === "indirectos" && <Gastos c={ctx} indirectos />}
+        {tab === "utilidad" && <Utilidad c={ctx} />}
+        {tab === "resumen" && <Resumen c={ctx} />}
+        {tab === "ventaHc" && <VentaHc c={ctx} />}
+        {tab === "gastoHc" && <GastoHc c={ctx} />}
+        {tab === "resultado" && <Resultado c={ctx} />}
+        {tab === "mano" && <ManoObra c={ctx} />}
+        {tab === "materiales" && <Materiales c={ctx} />}
+        {tab === "avance" && <Avance c={ctx} />}
+
         <footer className="note">
-          <strong>Sobre esta página:</strong> los datos se leen de los Google Sheets contables (movimientos 2021–2026), el plan de cuentas, los centros de
-          negocio, la hoja de costo (PPTOS) y los adicionales de obra. Los montos coinciden con Power BI para 2024–2026; los años 2021–2023 existen
-          solo aquí. Gasto = cuentas 4.x, venta = cuentas 3.x; área RCT por centro de negocio que parte en «RCT», INTA por «INT».
+          <strong>Sobre esta página:</strong> venta = cuentas 3.x y gasto = cuentas 4.x de los centros de negocio RCT, leídas de los Sheets contables
+          (2021–2026). «Económico» omite la cuenta 3110101002; «Financiero» incluye todas. El presupuesto sale de la hoja de costo (PPTOS) y no depende
+          del año ni del mes. Los montos de 2024–2026 coinciden con Power BI.
         </footer>
       </div>
     </div>
   );
 }
 
-/* ───────────── 1. Gastos Indirectos RCT ───────────── */
-function Indirectos({ data }: { data: RctData }) {
-  const [q, setQ] = useState("");
-  const rowsCn = useMemo(() => data.gl.filter((r) => r.area === "RCT" && r.tipo === "Gasto" && r.cn === CN_INDIRECTOS), [data]);
-  const ppto = useMemo(() => data.pptoGastos.filter((r) => r.area === "Refacciones"), [data]);
-  const months = useMemo(() => monthRange([...rowsCn.map((r) => r.ym), ...ppto.map((r) => r.ym)]), [rowsCn, ppto]);
-  const real = byMonth(rowsCn, months, -1);
-  const presMap = new Map(ppto.map((r) => [r.ym, r.monto]));
-  const pres = months.map((m) => presMap.get(m) ?? 0);
-  const totalReal = sum(real, (x) => x);
-  const totalPres = sum(pres, (x) => x);
-
-  const porCn = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of data.gl) if (r.area === "RCT" && r.tipo === "Gasto") m.set(r.cn, (m.get(r.cn) ?? 0) - r.monto);
-    return [...m.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 14);
-  }, [data]);
-
-  const ql = q.trim().toLowerCase();
-  const detalle = ql ? data.detalleIndirectos.filter((d) => `${d.comment} ${d.c1} ${d.c2} ${d.alias}`.toLowerCase().includes(ql)) : data.detalleIndirectos;
-
+/* ───────────── 1. Ventas RCT ───────────── */
+function Ventas({ c }: { c: Ctx }) {
+  const mensual = monthly(c.ventas, c.months);
+  const real = sum(mensual, (x) => x);
+  const pres = c.pres.hay ? c.pres.ventaTotal : null;
+  const labels = c.months.map(labelYm);
   return (
     <>
       <div className="stats">
-        <Tile v={fmtCompact(totalReal)} l="Gasto real centro «General Refacción Centrales Térmicas»" />
-        <Tile v={fmtCompact(totalPres)} l="Presupuesto de gastos Refacciones (suma del período)" />
-        <Tile v={data.detalleIndirectos.length.toString()} l="Líneas de gasto en el detalle" />
+        <Kpi v={money(pres)} l="Venta presupuestada" />
+        <Kpi v={fmtCLP(real)} l="Ventas reales" tone="good" />
+        <Kpi v={pres === null ? "—" : fmtCLP(pres - real)} l="Diferencia (presupuestada − real)" />
+        <Kpi v={fmtPct(pres ? real / pres : null)} l="% de avance" tone={pctTone(pres ? real / pres : null)} />
       </div>
       <div className="rct-grid">
-        <Panel title="Gastos RCT" hint="Presupuesto mensual de gastos (Refacciones) vs gasto real del centro de gastos indirectos.">
+        <Panel title="Ventas presupuestadas vs reales" hint="Venta real acumulada y mensual frente a la venta presupuestada de la hoja de costo.">
           <SeriesChart
-            labels={months.map(labelYm)}
+            labels={labels}
             series={[
-              { name: "Presupuesto gastos (Refacciones)", kind: "bar", values: pres, color: "#93c5fd" },
-              { name: "Gasto real (CN indirectos)", kind: "line", values: real, color: "#d97706" },
+              { name: "Ventas reales acumuladas", kind: "area", values: cumulative(mensual), color: C_VENTA },
+              ...(pres ? [{ name: "Venta presupuestada", kind: "line" as const, values: c.months.map(() => pres), color: C_UTIL, dashed: true }] : []),
             ]}
           />
         </Panel>
-        <Panel title="Monto de gastos por centro de negocio" hint="Gasto real acumulado de RCT por CN agrupado (top 14). El CN indirectos aparece destacado.">
-          <HBars items={porCn} highlight={CN_INDIRECTOS} />
+        <Panel title="Ventas por mes">
+          <SeriesChart labels={labels} series={[{ name: "Ventas reales", kind: "bar", values: mensual, color: C_VENTA }]} />
         </Panel>
       </div>
-      <section className="summary">
-        <h2>Detalles facturación DF</h2>
-        <p className="hint">Líneas contables de gasto del centro de gastos indirectos de Refacciones, más recientes primero.</p>
-        <input className="search-box" type="text" placeholder="Buscar en glosa, clasificadores o cuenta…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <div className="table-scroll" style={{ maxHeight: 480, overflowY: "auto" }}>
-          <table className="data-table">
-            <thead>
-              <tr><th>Fecha</th><th>Clasificador 1</th><th>Clasificador 2</th><th>Glosa</th><th>Cuenta</th><th>Centro de negocio</th><th style={{ textAlign: "right" }}>Monto gasto</th></tr>
-            </thead>
-            <tbody>
-              {detalle.slice(0, 400).map((d, i) => (
-                <tr key={i}>
-                  <td>{d.date}</td><td>{d.c1 || "—"}</td><td>{d.c2 || "—"}</td>
-                  <td className="wrap-col">{d.comment || "—"}</td><td>{d.alias}</td><td>{d.cnDesc}</td>
-                  <td style={{ textAlign: "right" }}>{fmtCLP(-d.monto)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {detalle.length > 400 && <p className="hint" style={{ marginTop: 8 }}>Mostrando 400 de {detalle.length} líneas; usa el buscador para acotar.</p>}
-      </section>
-    </>
-  );
-}
-
-/* ───────────── 2 y 6. Venta vs Hoja de Costo ───────────── */
-function VentaHc({ data, area, titulo }: { data: RctData; area: "RCT" | "INTA"; titulo: string }) {
-  const rows = useMemo(() => data.gl.filter((r) => r.area === area && r.tipo === "Ganancia" && r.alias === "VENTAS"), [data, area]);
-  const months = useMemo(() => monthRange(rows.map((r) => r.ym)), [rows]);
-  const mensual = byMonth(rows, months);
-  const acum = cumulative(mensual);
-  const prefijo = area === "RCT" ? "RCT" : "INTA";
-  const ppto = useMemo(() => data.ppto.filter((r) => r.cn.startsWith(prefijo) && r.alias === "VENTA"), [data, prefijo]);
-  const contrato = sum(ppto.filter((r) => r.tipo === "CONTRATO"), (r) => r.importe);
-  const adicional = sum(ppto.filter((r) => r.tipo === "ADICIONAL"), (r) => r.importe);
-  const total = contrato + adicional;
-  const totalReal = sum(mensual, (x) => x);
-
-  const porObra = useMemo(() => {
-    const real = new Map<string, number>();
-    for (const r of rows) real.set(r.cn, (real.get(r.cn) ?? 0) + r.monto);
-    const pr = new Map<string, number>();
-    for (const r of ppto) pr.set(r.cn, (pr.get(r.cn) ?? 0) + r.importe);
-    const names = new Set([...real.keys(), ...pr.keys()]);
-    return [...names].map((cn) => ({ cn, real: real.get(cn) ?? 0, pres: pr.get(cn) ?? 0 })).sort((a, b) => b.real - a.real);
-  }, [rows, ppto]);
-
-  const ref = (name: string, v: number, color: string): Series => ({ name, kind: "line", values: months.map(() => v), color, dashed: true });
-
-  return (
-    <>
-      <div className="stats">
-        <Tile v={fmtCompact(totalReal)} l={`Venta real ${titulo}`} />
-        <Tile v={fmtCompact(contrato)} l="Venta presupuestada contrato" />
-        <Tile v={fmtCompact(adicional)} l="Venta presupuestada adicional" />
-        <Tile v={total > 0 ? fmtPct(totalReal / total) : "—"} l="Avance venta real vs presupuesto total" color={total > 0 ? pctColor(totalReal / total) : undefined} />
-      </div>
-      {total === 0 && (
-        <div className="rct-note">No hay hoja de costo (PPTOS) cargada para {titulo}: solo se muestra la venta real contable.</div>
-      )}
-      <div className="rct-grid">
-        <Panel title="Venta acumulada vs hoja de costo" hint="Venta real acumulada frente a la venta presupuestada (contrato y total con adicionales).">
-          <SeriesChart
-            labels={months.map(labelYm)}
-            series={[
-              { name: "Venta real acumulada", kind: "area", values: acum, color: "#2563eb" },
-              ...(total > 0 ? [ref("Presupuestada contrato", contrato, "#16a34a"), ref("Presupuestada total", total, "#d97706")] : []),
-            ]}
-          />
-        </Panel>
-        <Panel title="Ventas por mes" hint="Venta contable mensual (cuentas de ganancia, alias VENTAS).">
-          <SeriesChart labels={months.map(labelYm)} series={[{ name: "Venta del mes", kind: "bar", values: mensual, color: "#2563eb" }]} />
-        </Panel>
-      </div>
-      <section className="summary">
-        <h2>Detalle por obra</h2>
-        <p className="hint">Venta real contable vs venta presupuestada de la hoja de costo.</p>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead><tr><th>Obra / centro de negocio</th><th style={{ textAlign: "right" }}>Venta presupuestada</th><th style={{ textAlign: "right" }}>Venta real</th><th>% avance</th></tr></thead>
-            <tbody>
-              {porObra.map((r) => {
-                const p = r.pres > 0 ? r.real / r.pres : null;
-                return (
-                  <tr key={r.cn}>
-                    <td className="obra-col">{r.cn}</td>
-                    <td style={{ textAlign: "right" }}>{r.pres ? fmtCLP(r.pres) : "—"}</td>
-                    <td style={{ textAlign: "right" }}>{fmtCLP(r.real)}</td>
-                    <td style={{ color: pctColor(p) }}>{fmtPct(p)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  );
-}
-
-/* ───────────── 3. Análisis de Gasto Materiales ───────────── */
-function Materiales({ data }: { data: RctData }) {
-  const cnSet = useMemo(() => new Set(data.cnList), [data]);
-  const filas = useMemo(() => {
-    const real = new Map<string, number>();
-    for (const r of data.gl) {
-      if (r.area !== "RCT" || r.tipo !== "Gasto" || r.alias === "VENTAS" || MANO_OBRA.has(r.alias) || !r.cn.includes("RCT")) continue;
-      real.set(r.alias, (real.get(r.alias) ?? 0) - r.monto);
-    }
-    const pres = new Map<string, number>();
-    for (const r of data.ppto) {
-      if (r.alias === "VENTA" || !r.alias || MANO_OBRA.has(r.alias) || !r.cn.includes("RCT") || !cnSet.has(r.cn)) continue;
-      pres.set(r.alias, (pres.get(r.alias) ?? 0) - r.importe);
-    }
-    const names = new Set([...real.keys(), ...pres.keys()]);
-    return [...names]
-      .map((alias) => {
-        const p = pres.get(alias) ?? 0;
-        const rr = real.get(alias) ?? 0;
-        return { alias, pres: p, real: rr, dif: p - rr, pct: p > 0 ? rr / p : null };
-      })
-      .sort((a, b) => b.real - a.real);
-  }, [data, cnSet]);
-
-  const conPres = filas.filter((f) => f.pres > 0);
-  const totalPres = sum(filas, (f) => f.pres);
-  const totalReal = sum(filas, (f) => f.real);
-
-  return (
-    <>
-      <div className="stats">
-        <Tile v={fmtCompact(totalPres)} l="Gasto presupuestado (sin mano de obra)" />
-        <Tile v={fmtCompact(totalReal)} l="Gasto real (sin mano de obra)" />
-        <Tile v={fmtCompact(totalPres - totalReal)} l="Diferencia presupuestado − real" color={totalPres - totalReal < 0 ? "var(--status-critical)" : "var(--status-good)"} />
-        <Tile v={totalPres > 0 ? fmtPct(totalReal / totalPres) : "—"} l="% de avance gastos" color={totalPres > 0 ? pctColor(totalReal / totalPres) : undefined} />
-      </div>
-      <Panel title="Gasto presupuestado y gasto real por alias" hint="Solo alias con presupuesto en la hoja de costo.">
-        <SeriesChart
-          height={300}
-          labels={conPres.map((f) => (f.alias.length > 16 ? f.alias.slice(0, 15) + "…" : f.alias))}
-          series={[
-            { name: "Gasto presupuestado", kind: "bar", values: conPres.map((f) => f.pres), color: "#93c5fd" },
-            { name: "Gasto real", kind: "bar", values: conPres.map((f) => f.real), color: "#d97706" },
-          ]}
+      <div className="rct-grid" style={{ gridTemplateColumns: "2fr 1fr" }}>
+        <LinesTable
+          title="Detalles facturación DF"
+          hint="Líneas de venta contable del período, más recientes primero."
+          rows={c.ventas}
+          cols={[C.cn, C.fecha, C.c1, C.c2, C.desc, { h: "Monto venta", get: (l) => fmtCLP(l.m), right: true }]}
+          totals={[{ label: "Ventas", f: (l) => l.m }]}
         />
-      </Panel>
-      <section className="summary">
-        <h2>Detalles de gastos por proyecto</h2>
-        <p className="hint">Excluye mano de obra y ventas. Diferencia = presupuestado − real (negativo: sobre el presupuesto).</p>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead><tr><th>Alias</th><th style={{ textAlign: "right" }}>Gasto presupuestado</th><th style={{ textAlign: "right" }}>Gasto real</th><th style={{ textAlign: "right" }}>Diferencia</th><th>% avance</th></tr></thead>
-            <tbody>
-              {filas.map((f) => (
-                <tr key={f.alias}>
-                  <td className="obra-col">{f.alias}</td>
-                  <td style={{ textAlign: "right" }}>{f.pres ? fmtCLP(f.pres) : "—"}</td>
-                  <td style={{ textAlign: "right" }}>{fmtCLP(f.real)}</td>
-                  <td style={{ textAlign: "right", color: f.dif < 0 ? "var(--status-critical)" : undefined }}>{f.pres ? fmtCLP(f.dif) : "—"}</td>
-                  <td style={{ color: pctColor(f.pct) }}>{fmtPct(f.pct)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <Panel title="Monto de ventas por CN" hint="Top 14 centros de negocio.">
+          <HBars items={groupBy(c.ventas, (l) => l.cn).slice(0, 14)} color={C_VENTA} />
+        </Panel>
+      </div>
     </>
   );
 }
 
-/* ───────────── 4. Análisis PPTOS adicionales ───────────── */
-const ESTADO_COLOR: Record<string, string> = { APROBADO: "#16a34a", PENDIENTE: "#d97706", RECHAZADO: "#dc2626" };
-
-function Adicionales({ data }: { data: RctData }) {
-  const [q, setQ] = useState("");
-  const rows = useMemo(() => data.adicionales.filter((a) => a.estado === "PENDIENTE" || a.estado === "APROBADO"), [data]);
-  const estados = ["APROBADO", "PENDIENTE"];
-  const porCant = estados.map((e) => ({ label: e, value: rows.filter((r) => r.estado === e).length, color: ESTADO_COLOR[e] }));
-  const porUf = estados.map((e) => ({ label: e, value: sum(rows.filter((r) => r.estado === e), (r) => r.valorUf), color: ESTADO_COLOR[e] }));
-  const aprobados = rows.filter((r) => r.estado === "APROBADO" && (r.fac === "SI" || r.fac === "NO"));
-  const fac = ["SI", "NO"].map((k) => ({ label: k === "SI" ? "Facturado" : "Sin facturar", value: sum(aprobados.filter((r) => r.fac === k), (r) => r.valorUf), color: k === "SI" ? "#16a34a" : "#d97706" }));
-  const porObra = useMemo(() => {
-    const m = new Map<string, Record<string, number>>();
-    for (const r of rows) {
-      const o = m.get(r.obra) ?? {};
-      o[r.estado] = (o[r.estado] ?? 0) + r.valorUf;
-      m.set(r.obra, o);
-    }
-    return [...m.entries()].map(([label, values]) => ({ label, values })).sort((a, b) => sum(Object.values(b.values), (x) => x) - sum(Object.values(a.values), (x) => x)).slice(0, 18);
-  }, [rows]);
-
-  const ql = q.trim().toLowerCase();
-  const tabla = ql ? rows.filter((r) => `${r.obra} ${r.asunto} ${r.codigo}`.toLowerCase().includes(ql)) : rows;
-  const totUf = sum(rows, (r) => r.valorUf);
-  const aprUf = porUf[0].value;
-  const facUf = fac[0].value;
-
+/* ───────────── 2 y 3. Gastos Directos / Indirectos ───────────── */
+function Gastos({ c, indirectos }: { c: Ctx; indirectos: boolean }) {
+  const rows = c.gastos.filter((l) => (l.cn === CN_INDIRECTOS) === indirectos);
+  const mensual = monthly(rows, c.months, -1);
+  const real = sum(mensual, (x) => x);
+  const pres = !indirectos && c.pres.hay ? c.pres.gasto : null;
+  const labels = c.months.map(labelYm);
   return (
     <>
       <div className="stats">
-        <Tile v={`${fmtNum(totUf, 1)} UF`} l="Adicionales aprobados + pendientes" />
-        <Tile v={`${fmtNum(aprUf, 1)} UF`} l="Aprobados" color="var(--status-good)" />
-        <Tile v={totUf > 0 ? fmtPct(aprUf / totUf) : "—"} l="Tasa de aprobación (UF)" />
-        <Tile v={aprUf > 0 ? fmtPct(facUf / aprUf) : "—"} l="Facturado sobre lo aprobado (UF)" />
-      </div>
-      <div className="rct-grid three">
-        <Panel title="Tasa de aprobación por cantidad"><Pie slices={porCant} /></Panel>
-        <Panel title="Tasa de aprobación por monto UF"><Pie slices={porUf} format={(n) => `${fmtNum(n, 1)} UF`} /></Panel>
-        <Panel title="Facturación de adicionales aprobados"><Pie slices={fac} format={(n) => `${fmtNum(n, 1)} UF`} /></Panel>
-      </div>
-      <Panel title="UF por obra y estado" hint="Distribución de cada obra entre adicionales aprobados y pendientes.">
-        <Stacked100 rows={porObra} keys={estados} colors={ESTADO_COLOR} />
-      </Panel>
-      <section className="summary">
-        <h2>Detalles</h2>
-        <input className="search-box" type="text" placeholder="Buscar obra, asunto o código…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead><tr><th>Código</th><th>Obra</th><th>Asunto</th><th style={{ textAlign: "right" }}>UF</th><th style={{ textAlign: "right" }}>Monto CLP</th><th>Estado</th><th>Fecha apr.</th><th>¿Fact.?</th><th>Fecha fact.</th></tr></thead>
-            <tbody>
-              {tabla.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.codigo}</td><td className="obra-col">{r.obra}</td><td className="wrap-col">{r.asunto}</td>
-                  <td style={{ textAlign: "right" }}>{fmtNum(r.valorUf, 2)}</td><td style={{ textAlign: "right" }}>{fmtCLP(r.montoClp)}</td>
-                  <td><span className={`status-chip ${r.estado === "APROBADO" ? "good" : "warning"}`}>{r.estado}</span></td>
-                  <td>{r.fechaApr ?? "—"}</td><td>{r.fac || "—"}</td><td>{r.fechaFac ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  );
-}
-
-/* ───────────── 5. Avance operativo ───────────── */
-function Avance({ data }: { data: RctData }) {
-  const sup = useMemo(() => new Map(data.obraSupervisor.map((o) => [o.obra.trim().toLowerCase(), o.supervisor])), [data]);
-  const filas = useMemo(() => {
-    const real = new Map<string, number>();
-    for (const r of data.gl) if (r.area === "INTA" && r.tipo === "Ganancia") real.set(r.cn, (real.get(r.cn) ?? 0) + r.monto);
-    const pres = new Map<string, number>();
-    for (const r of data.ppto) if (r.alias === "VENTA") pres.set(r.cn, (pres.get(r.cn) ?? 0) + r.importe);
-    const names = new Set([...real.keys(), ...data.obraSupervisor.map((o) => o.obra)]);
-    return [...names]
-      .map((cn) => {
-        const rr = real.get(cn) ?? 0;
-        const pp = pres.get(cn) ?? 0;
-        return { cn, supervisor: sup.get(cn.trim().toLowerCase()) || "—", real: rr, pres: pp, pct: pp > 0 ? rr / pp : null };
-      })
-      .sort((a, b) => a.supervisor.localeCompare(b.supervisor) || b.real - a.real);
-  }, [data, sup]);
-  const porSup = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const f of filas) if (f.supervisor !== "—") m.set(f.supervisor, (m.get(f.supervisor) ?? 0) + f.real);
-    return [...m.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
-  }, [filas]);
-
-  return (
-    <>
-      <div className="stats">
-        <Tile v={fmtCompact(sum(filas, (f) => f.real))} l="Venta real INTA (suma de obras)" />
-        <Tile v={fmtCompact(sum(filas, (f) => f.pres))} l="Venta presupuestada total" />
-        <Tile v={String(filas.filter((f) => f.supervisor !== "—").length)} l="Obras con supervisor asignado" />
+        <Kpi v={money(pres)} l="Gastos presupuestados" />
+        <Kpi v={fmtCLP(real)} l="Gasto real" tone="bad" />
+        <Kpi v={pres === null ? "—" : fmtCLP(pres - real)} l="Diferencia (presupuestado − real)" />
+        <Kpi v={fmtPct(pres ? real / pres : null)} l="% de avance" tone={pctTone(pres ? real / pres : null, true)} />
       </div>
       <div className="rct-grid">
-        <Panel title="Venta real por supervisor" hint="Suma de la venta contable de las obras de cada supervisor.">
-          <HBars items={porSup} />
+        <Panel title="Gastos reales acumulados" hint={indirectos ? "Centro «General Refacción Centrales Térmicas»." : "Todos los centros de negocio RCT salvo el de gastos indirectos."}>
+          <SeriesChart
+            labels={labels}
+            series={[
+              { name: "Gastos reales acumulados", kind: "area", values: cumulative(mensual), color: C_GASTO },
+              ...(pres ? [{ name: "Gasto presupuestado", kind: "line" as const, values: c.months.map(() => pres), color: C_UTIL, dashed: true }] : []),
+            ]}
+          />
         </Panel>
-        <section className="summary" style={{ marginTop: 0 }}>
-          <h2>Detalles</h2>
-          <p className="hint">Obra, supervisor, venta real y avance contra la venta presupuestada.</p>
-          <div className="table-scroll" style={{ maxHeight: 420, overflowY: "auto" }}>
-            <table className="data-table">
-              <thead><tr><th>Supervisor</th><th>Obra</th><th style={{ textAlign: "right" }}>Venta real</th><th style={{ textAlign: "right" }}>Venta presup.</th><th>% avance</th></tr></thead>
-              <tbody>
-                {filas.map((f) => (
-                  <tr key={f.cn}>
-                    <td>{f.supervisor}</td><td className="obra-col">{f.cn}</td>
-                    <td style={{ textAlign: "right" }}>{fmtCLP(f.real)}</td>
-                    <td style={{ textAlign: "right" }}>{f.pres ? fmtCLP(f.pres) : "—"}</td>
-                    <td style={{ color: pctColor(f.pct) }}>{fmtPct(f.pct)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <Panel title="Gastos por mes">
+          <SeriesChart labels={labels} series={[{ name: "Gasto real", kind: "bar", values: mensual, color: C_GASTO }]} />
+        </Panel>
+      </div>
+      <div className="rct-grid" style={{ gridTemplateColumns: "2fr 1fr" }}>
+        <LinesTable
+          title="Detalles facturación DF"
+          hint="Líneas de gasto contable del período, más recientes primero."
+          rows={rows}
+          cols={[C.cd, C.fecha, C.c1, C.c2, C.desc, { h: "Monto gasto", get: (l) => fmtCLP(l.m), right: true }, C.cuenta]}
+          totals={[{ label: "Gasto", f: (l) => -l.m }]}
+        />
+        <Panel title="Monto de gastos por CN" hint="Top 14 centros de negocio.">
+          <HBars items={groupBy(rows, (l) => l.cn, -1).slice(0, 14)} color={C_GASTO} />
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ───────────── 4. Utilidad RCT ───────────── */
+function Utilidad({ c }: { c: Ctx }) {
+  const venta = monthly(c.ventas, c.months);
+  const gasto = monthly(c.gastos, c.months, -1);
+  const util = venta.map((v, i) => v - gasto[i]);
+  const real = sum(util, (x) => x);
+  const pres = c.pres.hay ? c.pres.utilidad : null;
+  const labels = c.months.map(labelYm);
+  return (
+    <>
+      <div className="stats">
+        <Kpi v={money(pres)} l="Utilidad presupuestada" />
+        <Kpi v={fmtCLP(real)} l="Utilidad real" tone={real >= 0 ? "good" : "bad"} />
+        <Kpi v={pres === null ? "—" : fmtCLP(pres - real)} l="Diferencia (presupuestada − real)" />
+        <Kpi v={fmtPct(pres ? real / pres : null)} l="% de avance" tone={pctTone(pres ? real / pres : null)} />
+      </div>
+      <div className="rct-grid">
+        <Panel title="Utilidad presupuestada vs real" hint="Utilidad acumulada frente a la utilidad presupuestada (venta − gasto de la hoja de costo).">
+          <SeriesChart
+            labels={labels}
+            series={[
+              { name: "Utilidad real acumulada", kind: "area", values: cumulative(util), color: C_VENTA },
+              ...(pres ? [{ name: "Utilidad presupuestada", kind: "line" as const, values: c.months.map(() => pres), color: C_UTIL, dashed: true }] : []),
+            ]}
+          />
+        </Panel>
+        <Panel title="Utilidad por mes">
+          <SeriesChart labels={labels} series={[{ name: "Utilidad real", kind: "bar", values: util, color: C_UTIL }]} />
+        </Panel>
+      </div>
+      <div className="rct-grid" style={{ gridTemplateColumns: "2fr 1fr" }}>
+        <LinesTable
+          title="Detalles facturación DF"
+          hint="Todas las líneas de venta y gasto del período; la utilidad es el monto con su signo."
+          rows={c.all}
+          cols={[C.cn, C.fecha, C.c1, C.c2, C.desc, { h: "Utilidad", get: (l) => fmtCLP(l.m), right: true }]}
+          totals={[{ label: "Utilidad", f: (l) => l.m }]}
+        />
+        <Panel title="Utilidad por CN" hint="Top 14 centros de negocio.">
+          <HBars items={groupBy(c.all, (l) => l.cn).slice(0, 14)} color={C_UTIL} />
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ───────────── 5. Resumen Económico ───────────── */
+function Resumen({ c }: { c: Ctx }) {
+  const venta = monthly(c.ventas, c.months);
+  const gasto = monthly(c.gastos, c.months);
+  const util = venta.map((v, i) => v + gasto[i]);
+  const tv = sum(venta, (x) => x);
+  const tg = sum(gasto, (x) => x);
+  return (
+    <>
+      <div className="stats">
+        <Kpi v={fmtCLP(tv)} l="Ventas RCT" tone="good" />
+        <Kpi v={fmtCLP(tg)} l="Gasto RCT" tone="bad" />
+        <Kpi v={fmtCLP(tv + tg)} l="Utilidad RCT" tone={tv + tg >= 0 ? "good" : "bad"} />
+      </div>
+      <div className="rct-grid" style={{ gridTemplateColumns: "2fr 1fr" }}>
+        <Panel title="Venta, costo y utilidad RCT" hint="Resultado mensual: ganancia, gasto y utilidad.">
+          <SeriesChart
+            labels={c.months.map(labelYm)}
+            series={[
+              { name: "Utilidad", kind: "bar", values: util, color: C_UTIL },
+              { name: "Ganancia", kind: "bar", values: venta, color: C_VENTA },
+              { name: "Gasto", kind: "bar", values: gasto, color: C_GASTO },
+            ]}
+          />
+        </Panel>
+        <Panel title="Monto de ventas por CN" hint="Top 14 centros de negocio.">
+          <HBars items={groupBy(c.ventas, (l) => l.cn).slice(0, 14)} color={C_VENTA} />
+        </Panel>
+      </div>
+      <LinesTable
+        title="Detalles facturación DF"
+        rows={c.all}
+        cols={[C.cn, C.fecha, C.c1, C.c2, C.desc, { h: "Monto venta", get: (l) => (l.t === "V" ? fmtCLP(l.m) : ""), right: true }, { h: "Monto gasto", get: (l) => (l.t === "G" ? fmtCLP(l.m) : ""), right: true }]}
+        totals={[{ label: "Ventas", f: (l) => (l.t === "V" ? l.m : 0) }, { label: "Gasto", f: (l) => (l.t === "G" ? l.m : 0) }]}
+      />
+    </>
+  );
+}
+
+/* ───────────── 6. Venta vs Hoja de Costo ───────────── */
+function VentaHc({ c }: { c: Ctx }) {
+  const mensual = monthly(c.ventas, c.months);
+  const real = sum(mensual, (x) => x);
+  const p = c.pres;
+  const meses = new Set(c.ventas.map((l) => l.d.slice(0, 7))).size;
+  const labels = c.months.map(labelYm);
+  return (
+    <>
+      <h2 className="rct-title">{c.proyecto}</h2>
+      <div className="stats">
+        <Kpi v={money(p.hay ? p.ventaContrato : null)} l="Venta presupuestada" />
+        <Kpi v={p.hay && p.ventaAdicional ? fmtCLP(p.ventaAdicional) : "—"} l="Venta adicional presupuestada" />
+        <Kpi v={money(p.hay ? p.ventaTotal : null)} l="Venta presupuestada (contrato + adicional)" />
+        <Kpi v={fmtCLP(real)} l="Ventas reales" tone="good" />
+        <Kpi v={p.hay ? fmtCLP(p.ventaTotal - real) : "—"} l="Saldo del proyecto (diferencia)" />
+        <Kpi v={String(meses)} l="Meses con actividad" />
+        <Kpi v={fmtPct(p.hay ? div(real, p.ventaTotal) : null)} l="% de avance" tone={pctTone(p.hay ? div(real, p.ventaTotal) : null)} />
+      </div>
+      <div className="rct-grid">
+        <Panel title="Ventas acumuladas vs venta presupuestada" hint="Ventas acumuladas, venta presupuestada de contrato y de contrato más adicional.">
+          <SeriesChart
+            labels={labels}
+            series={[
+              { name: "Ventas acumuladas", kind: "area", values: cumulative(mensual), color: C_PRES },
+              ...(p.hay
+                ? [
+                    { name: "Venta presupuestada contrato", kind: "line" as const, values: c.months.map(() => p.ventaContrato), color: C_VENTA, dashed: true },
+                    { name: "Contrato + adicional", kind: "line" as const, values: c.months.map(() => p.ventaTotal), color: C_UTIL, dashed: true },
+                  ]
+                : []),
+            ]}
+          />
+        </Panel>
+        <Panel title="Ventas por mes">
+          <SeriesChart labels={labels} series={[{ name: "Monto ventas", kind: "bar", values: mensual, color: C_UTIL }]} />
+        </Panel>
       </div>
     </>
   );
 }
 
 /* ───────────── 7. Gasto vs Hoja de Costo ───────────── */
-function GastoHc({ data }: { data: RctData }) {
-  const rows = useMemo(() => data.gl.filter((r) => r.area === "RCT" && r.tipo === "Gasto" && r.alias !== "VENTAS" && r.ym >= "2020-01"), [data]);
-  const months = useMemo(() => monthRange(rows.map((r) => r.ym)), [rows]);
-  const mensual = byMonth(rows, months, -1);
-  const acum = cumulative(mensual);
-  const pres = -sum(data.ppto.filter((r) => r.alias !== "VENTA"), (r) => r.importe);
+function GastoHc({ c }: { c: Ctx }) {
+  const mensual = monthly(c.gastos, c.months, -1);
   const real = sum(mensual, (x) => x);
-
+  const p = c.pres;
+  const meses = new Set(c.gastos.map((l) => l.d.slice(0, 7))).size;
+  const labels = c.months.map(labelYm);
   return (
     <>
+      <h2 className="rct-title">{c.proyecto}</h2>
       <div className="stats">
-        <Tile v={fmtCompact(real)} l="Gasto real RCT acumulado" />
-        <Tile v={fmtCompact(pres)} l="Gasto presupuestado (hoja de costo)" />
-        <Tile v={fmtCompact(pres - real)} l="Diferencia presupuestado − real" color={pres - real < 0 ? "var(--status-critical)" : "var(--status-good)"} />
-        <Tile v={pres > 0 ? fmtPct(real / pres) : "—"} l="% de avance de gasto" color={pres > 0 ? pctColor(real / pres) : undefined} />
+        <Kpi v={money(p.hay ? p.gasto : null)} l="Gasto presupuestado" />
+        <Kpi v={fmtCLP(real)} l="Gasto real del proyecto" tone="bad" />
+        <Kpi v={p.hay ? fmtCLP(p.gasto - real) : "—"} l="Saldo del proyecto" />
+        <Kpi v={String(meses)} l="Meses con actividad" />
+        <Kpi v={fmtPct(p.hay ? div(real, p.gasto) : null)} l="% de avance" tone={pctTone(p.hay ? div(real, p.gasto) : null, true)} />
+        <Kpi v={meses ? fmtCLP(real / meses) : "—"} l="Gasto promedio mensual" />
+        <Kpi v={p.hay && meses ? fmtCLP(p.gasto / meses) : "—"} l="Gasto promedio mensual presupuestado" />
       </div>
       <div className="rct-grid">
-        <Panel title="Gasto acumulado vs gasto presupuestado" hint="Gasto real acumulado de RCT frente al total presupuestado en la hoja de costo.">
+        <Panel title="Gasto acumulado vs gasto presupuestado">
           <SeriesChart
-            labels={months.map(labelYm)}
+            labels={labels}
             series={[
-              { name: "Gasto real acumulado", kind: "area", values: acum, color: "#d97706" },
-              { name: "Gasto presupuestado", kind: "line", values: months.map(() => pres), color: "#2563eb", dashed: true },
+              { name: "Gasto acumulado", kind: "area", values: cumulative(mensual), color: C_GASTO },
+              ...(p.hay ? [{ name: "Gasto presupuestado", kind: "line" as const, values: c.months.map(() => p.gasto), color: C_UTIL, dashed: true }] : []),
             ]}
           />
         </Panel>
-        <Panel title="Gasto por mes" hint="Gasto contable mensual de Refacciones (sin cuentas de venta).">
-          <SeriesChart labels={months.map(labelYm)} series={[{ name: "Gasto del mes", kind: "bar", values: mensual, color: "#d97706" }]} />
+        <Panel title="Gasto por mes">
+          <SeriesChart labels={labels} series={[{ name: "Monto gasto", kind: "bar", values: mensual, color: C_UTIL }]} />
         </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ───────────── 8. Resultado vs Hoja de Costo ───────────── */
+function Resultado({ c }: { c: Ctx }) {
+  const venta = monthly(c.ventas, c.months);
+  const gasto = monthly(c.gastos, c.months, -1);
+  const tv = sum(venta, (x) => x);
+  const tg = sum(gasto, (x) => x);
+  const ut = tv - tg;
+  const p = c.pres;
+  const hay = p.hay;
+  const labels = c.months.map(labelYm);
+  const margenP = hay ? div(p.ventaTotal - p.gasto, p.ventaTotal) : null;
+  return (
+    <>
+      <h2 className="rct-title">{c.proyecto}</h2>
+      <div className="stats">
+        <Kpi v={money(hay ? p.ventaTotal : null)} l="Venta presupuestada total" />
+        <Kpi v={fmtCLP(tv)} l="Ventas reales" tone="good" />
+        <Kpi v={hay ? fmtCLP(p.ventaTotal - tv) : "—"} l="Diferencia ventas" />
+        <Kpi v={fmtPct(hay ? div(tv, p.ventaTotal) : null)} l="% de avance ventas" />
+        <Kpi v={money(hay ? p.utilidad : null)} l="Utilidad presupuestada" />
+      </div>
+      <div className="stats">
+        <Kpi v={money(hay ? p.gasto : null)} l="Gasto presupuestado" />
+        <Kpi v={fmtCLP(tg)} l="Gasto real" tone="bad" />
+        <Kpi v={hay ? fmtCLP(p.gasto - tg) : "—"} l="Diferencia gasto" />
+        <Kpi v={fmtPct(hay ? div(tg, p.gasto) : null)} l="% de avance gasto" tone={pctTone(hay ? div(tg, p.gasto) : null, true)} />
+        <Kpi v={fmtCLP(ut)} l="Utilidad real" tone={ut >= 0 ? "good" : "bad"} />
+      </div>
+      <div className="stats">
+        <Kpi v={fmtPct(margenP)} l="Margen presupuestado" />
+        <Kpi v={fmtPct(div(ut, tv))} l="Margen real" />
+        <Kpi v={hay ? fmtCLP(ut - p.utilidad) : "—"} l="Diferencia utilidad" tone={hay && ut - p.utilidad < 0 ? "bad" : undefined} />
+        <Kpi v={fmtPct(hay ? div(ut, p.utilidad) : null)} l="% de avance utilidad" />
+        <Kpi v={hay && p.gasto ? fmtNum(p.ventaTotal / p.gasto, 2) : "—"} l="Factor presupuestado" />
+        <Kpi v={tg ? fmtNum(tv / tg, 2) : "—"} l="Factor real" />
+      </div>
+      <Panel title="Utilidad, gasto y ventas acumulados" hint="Acumulados reales (líneas llenas) y presupuestados (líneas punteadas).">
+        <SeriesChart
+          height={300}
+          labels={labels}
+          series={[
+            { name: "Ventas acumuladas", kind: "line", values: cumulative(venta), color: C_VENTA },
+            { name: "Gasto acumulado", kind: "line", values: cumulative(gasto), color: C_GASTO },
+            { name: "Utilidad acumulada", kind: "line", values: cumulative(venta.map((v, i) => v - gasto[i])), color: C_UTIL },
+            ...(hay
+              ? [
+                  { name: "Venta presupuestada", kind: "line" as const, values: c.months.map(() => p.ventaTotal), color: C_VENTA, dashed: true },
+                  { name: "Gasto presupuestado", kind: "line" as const, values: c.months.map(() => p.gasto), color: C_GASTO, dashed: true },
+                  { name: "Utilidad presupuestada", kind: "line" as const, values: c.months.map(() => p.utilidad), color: C_UTIL, dashed: true },
+                ]
+              : []),
+          ]}
+        />
+      </Panel>
+    </>
+  );
+}
+
+/* ───────────── 9. Mano de Obra ───────────── */
+function ManoObra({ c }: { c: Ctx }) {
+  const nombres = useMemo(() => new Map(c.data.empleados.map(([rut, n]) => [normRut(rut), n])), [c.data.empleados]);
+  const rows = c.gastos.filter((l) => MANO_OBRA.has(l.al));
+  const mensual = monthly(rows, c.months, -1);
+  const real = sum(mensual, (x) => x);
+  const pres = c.pres.hay ? c.pres.mo : null;
+  const meses = new Set(rows.map((l) => l.d.slice(0, 7))).size;
+  const porPersona = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of rows) {
+      if (!l.cm.startsWith("Dist Remu -")) continue;
+      const rut = normRut(l.cm.slice("Dist Remu -".length));
+      const nombre = nombres.get(rut) ?? `RUT ${l.cm.slice("Dist Remu -".length).trim()}`;
+      m.set(nombre, (m.get(nombre) ?? 0) - l.m);
+    }
+    return [...m.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 16);
+  }, [rows, nombres]);
+  return (
+    <>
+      <h2 className="rct-title">{c.proyecto}</h2>
+      <div className="stats">
+        <Kpi v={money(pres)} l="Mano de obra presupuestada" />
+        <Kpi v={fmtCLP(real)} l="Mano de obra real" tone="bad" />
+        <Kpi v={pres === null ? "—" : fmtCLP(pres - real)} l="Saldo mano de obra" />
+        <Kpi v={fmtPct(pres ? real / pres : null)} l="% de avance mano de obra" tone={pctTone(pres ? real / pres : null, true)} />
+        <Kpi v={pres === null ? "—" : fmtNum(pres / 1e6, 2)} l="Presupuestado (millones)" />
+        <Kpi v={fmtNum(real / 1e6, 2)} l="Gastado (millones)" />
+        <Kpi v={String(meses)} l="Meses con actividad" />
+      </div>
+      <div className="rct-grid">
+        <Panel title="Gasto de mano de obra por persona" hint="Según la distribución de remuneraciones («Dist Remu»), cruzada con el maestro de empleados.">
+          <HBars items={porPersona} color={C_GASTO} />
+        </Panel>
+        <Panel title="Gasto de mano de obra por mes">
+          <SeriesChart labels={c.months.map(labelYm)} series={[{ name: "Mano de obra", kind: "bar", values: mensual, color: C_GASTO }]} />
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ───────────── 10. Materiales ───────────── */
+function Materiales({ c }: { c: Ctx }) {
+  const rows = c.gastos.filter((l) => !MANO_OBRA.has(l.al) && l.al !== "VENTAS");
+  const real = new Map<string, number>();
+  for (const l of rows) real.set(l.al, (real.get(l.al) ?? 0) - l.m);
+  const names = new Set([...real.keys(), ...[...c.pres.porAlias.keys()].filter((a) => !MANO_OBRA.has(a))]);
+  const filas = [...names]
+    .map((a) => {
+      const pp = c.pres.porAlias.get(a) ?? 0;
+      const rr = real.get(a) ?? 0;
+      return { alias: a, pres: pp, real: rr, dif: pp - rr, pct: pp ? rr / pp : null };
+    })
+    .filter((f) => f.pres || f.real)
+    .sort((a, b) => b.pres - a.pres || b.real - a.real);
+  const tp = sum(filas, (f) => f.pres);
+  const tr = sum(filas, (f) => f.real);
+  const graf = filas.filter((f) => f.pres > 0).slice(0, 12);
+  return (
+    <>
+      <h2 className="rct-title">{c.proyecto}</h2>
+      <div className="stats">
+        <Kpi v={money(c.pres.hay ? tp : null)} l="Gasto presupuestado" />
+        <Kpi v={fmtCLP(tr)} l="Gasto real" tone="bad" />
+        <Kpi v={c.pres.hay ? fmtCLP(tp - tr) : "—"} l="Diferencia" />
+        <Kpi v={fmtPct(div(tr, tp))} l="Porcentaje de avance" tone={pctTone(div(tr, tp), true)} />
+      </div>
+      <Panel title="Gasto presupuestado y real por tipo de gasto" hint="Sin mano de obra. Solo tipos con presupuesto.">
+        <SeriesChart
+          height={300}
+          labels={graf.map((f) => f.alias)}
+          series={[
+            { name: "Gasto presupuestado", kind: "bar", values: graf.map((f) => f.pres), color: "#d6b100" },
+            { name: "Gasto real", kind: "bar", values: graf.map((f) => f.real), color: C_GASTO },
+          ]}
+        />
+      </Panel>
+      <section className="summary">
+        <h2>Detalles de gastos por proyecto</h2>
+        <p className="hint">Diferencia = presupuestado − real (negativo: sobre el presupuesto).</p>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead><tr><th>Tipo de gasto</th><th style={{ textAlign: "right" }}>Gasto presupuestado</th><th style={{ textAlign: "right" }}>Gasto real</th><th style={{ textAlign: "right" }}>Diferencia</th><th>%</th></tr></thead>
+            <tbody>
+              {filas.map((f) => (
+                <tr key={f.alias}>
+                  <td className="obra-col">{f.alias}</td>
+                  <td style={{ textAlign: "right" }}>{f.pres ? fmtCLP(f.pres) : "—"}</td>
+                  <td style={{ textAlign: "right" }}>{f.real ? fmtCLP(f.real) : "—"}</td>
+                  <td style={{ textAlign: "right", color: f.dif < 0 ? "var(--status-critical)" : undefined }}>{fmtCLP(f.dif)}</td>
+                  <td>{f.pct === null ? "—" : fmtPct(f.pct)}</td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: 700 }}>
+                <td>Total</td>
+                <td style={{ textAlign: "right" }}>{fmtCLP(tp)}</td>
+                <td style={{ textAlign: "right" }}>{fmtCLP(tr)}</td>
+                <td style={{ textAlign: "right" }}>{fmtCLP(tp - tr)}</td>
+                <td>{fmtPct(div(tr, tp))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  );
+}
+
+/* ───────────── 11. % de Avance vs HC ───────────── */
+function Avance({ c }: { c: Ctx }) {
+  const tv = sum(c.ventas, (l) => l.m);
+  const tg = -sum(c.gastos, (l) => l.m);
+  const mo = -sum(c.gastos.filter((l) => MANO_OBRA.has(l.al)), (l) => l.m);
+  const mat = tg - mo;
+  const ut = tv - tg;
+  const p = c.pres;
+  const items = [
+    { t: "Porcentaje de avance ventas", real: tv, pres: p.ventaTotal, color: C_VENTA, invert: false },
+    { t: "Porcentaje de avance gastos", real: tg, pres: p.gasto, color: C_GASTO, invert: true },
+    { t: "Porcentaje de avance utilidad", real: ut, pres: p.utilidad, color: C_UTIL, invert: false },
+    { t: "% de avance gasto mano de obra", real: mo, pres: p.mo, color: C_GASTO, invert: true },
+    { t: "% de avance gasto materiales", real: mat, pres: p.materiales, color: C_GASTO, invert: true },
+  ];
+  return (
+    <>
+      <h2 className="rct-title">{c.proyecto}</h2>
+      {!p.hay && <div className="rct-note">No hay hoja de costo para este filtro: los medidores quedan en blanco.</div>}
+      <div className="rct-avance">
+        {items.map((it) => {
+          const pct = p.hay ? div(it.real, it.pres) : null;
+          return (
+            <section className="summary" key={it.t} style={{ marginTop: 0 }}>
+              <h2>{it.t}</h2>
+              <div className="rct-avance-row">
+                <Gauge pct={pct} color={it.color} label={`${fmtCLP(it.real)} de ${p.hay ? fmtCLP(it.pres) : "—"}`} left="0%" right="100%" />
+                <Bullet value={it.real} target={it.pres} color={it.color} label="Real vs presupuestado" />
+              </div>
+            </section>
+          );
+        })}
       </div>
     </>
   );

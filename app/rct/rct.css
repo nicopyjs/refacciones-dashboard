@@ -74,3 +74,52 @@
 .rct-hbar .track > div { height: 100%; border-radius: 999px; }
 .rct-hbar .track.stacked > div { border-radius: 0; }
 .rct-hbar .n { font-size: 12px; text-align: right; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+.rct-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-sm);
+}
+.rct-filters label, .rct-filters .seg { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--muted); font-weight: 600; letter-spacing: 0.01em; }
+.rct-filters select {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-sm);
+  padding: 7px 10px;
+  min-width: 120px;
+}
+.rct-filters label.wide select { min-width: 280px; max-width: 420px; }
+.rct-filters select:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+.rct-filters .seg > div { display: inline-flex; border: 1px solid var(--border); border-radius: var(--ui-radius-sm); overflow: hidden; }
+.rct-filters .seg button {
+  appearance: none; border: 0; background: var(--surface-2); color: var(--text-secondary);
+  font: inherit; font-size: 13px; font-weight: 550; padding: 7px 14px; cursor: pointer;
+}
+.rct-filters .seg button.on { background: var(--accent); color: #fff; }
+.rct-filters .seg button:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.rct-title { font-size: 17px; margin: 4px 0 12px; font-weight: 650; letter-spacing: -0.01em; }
+.stat-tile.rct-kpi-big .v { font-size: 26px; }
+
+.rct-avance { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.rct-avance-row { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: center; }
+@media (max-width: 960px) { .rct-avance { grid-template-columns: 1fr; } .rct-avance-row { grid-template-columns: 1fr; } }
+.rct-gauge svg { width: 100%; max-width: 210px; display: block; margin: 0 auto; }
+.rct-gauge-v { font-size: 20px; font-weight: 700; fill: var(--text-primary); }
+.rct-gauge-l { text-align: center; font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+.rct-bullet-h { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.rct-bullet-h b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.rct-bullet-track { position: relative; height: 14px; background: var(--surface-2); border-radius: 999px; }
+.rct-bullet-track > div { height: 100%; border-radius: 999px; }
+.rct-bullet-track > i { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text-primary); border-radius: 2px; }

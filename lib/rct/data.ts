@@ -4,7 +4,7 @@ import { build } from "./build";
 import { loadAllInputs } from "./sources";
 import type { RctData } from "./types";
 
-const PREFIX = "rct:data:v1";
+const PREFIX = "rct:data:v2";
 const LOCK_KEY = `${PREFIX}:lock`;
 const CHUNK = 350_000; // caracteres base64 por clave (límite de request de Upstash)
 /** Cuánto tiempo se considera fresco el cache antes de recalcular en segundo plano. */

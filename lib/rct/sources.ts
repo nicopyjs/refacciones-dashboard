@@ -8,10 +8,8 @@ export const FUENTES = {
   mov2026: "1IGN_SaV7zKqwMRGc21N_avA-pyWtI4sY6IxnADbU9oU",
   planes: "1H6a16Mj3VShFgXXf6nnLZ08udW7xT0X6m4NPsL_BXxU",
   idcn: "1XCeMZRw6bU--3SeOFRI08J5eFxaFbvVflPWWaczufQc",
-  adicionales: "1qCYzvDEng5N0NaFZUXZrbvqfs1gGDtfzsnMmniLc5B8",
   pptos: "1y70sUTgoubVQTLKKWUINrz5YsoTYSfs8", // xlsx en Drive
-  pptoGastos: "1H-vXLc8HwauSscBSQ3QxiKjBM-MCM1sU", // xlsx en Drive
-  obraSupervisor: "11JwJLaB70A4LvKomsDCaQcnzFkNWA-Gk", // xlsx en Drive
+  empleados: "19Z21VDaqtKOC9IolM6KPTQ6h4GY4SVR4C893tAIrank",
 } as const;
 
 const MOV_TAB = "Hoja 1";
@@ -113,15 +111,13 @@ async function movimientos(id: string): Promise<MovRow[]> {
 }
 
 export async function loadAllInputs() {
-  const [movA, movB, planes, idcn, adicionales, pptos, pptoGastos, obraSupervisor] = await Promise.all([
+  const [movA, movB, planes, idcn, pptos, empleados] = await Promise.all([
     movimientos(FUENTES.movHistorico),
     movimientos(FUENTES.mov2026),
     sheetValues(FUENTES.planes, "PlanesCuenta"),
     sheetValues(FUENTES.idcn, "centros_negocio"),
-    sheetValues(FUENTES.adicionales, "Hoja 1"),
     driveXlsxRows(FUENTES.pptos, "PPTOS"),
-    driveXlsxRows(FUENTES.pptoGastos, "AnexoPsto"),
-    driveXlsxRows(FUENTES.obraSupervisor, "Hoja1"),
+    sheetValues(FUENTES.empleados, "Maestro Empleados"),
   ]);
-  return { mov: movA.concat(movB), planes, idcn, adicionales, pptos, pptoGastos, obraSupervisor };
+  return { mov: movA.concat(movB), planes, idcn, pptos, empleados };
 }
