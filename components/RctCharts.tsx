@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export const PALETTE = ["#2563eb", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#dc2626", "#64748b", "#db2777"];
 
 const nf = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 2 });
 
 export function fmtCLP(n: number): string {
   return `${n < 0 ? "-" : ""}$${nf.format(Math.abs(Math.round(n)))}`;
@@ -15,7 +16,7 @@ export function fmtCLP(n: number): string {
 export function fmtCompact(n: number): string {
   const a = Math.abs(n);
   const s = n < 0 ? "-" : "";
-  if (a >= 1e9) return `${s}$${nf1.format(a / 1e9)} MM`;
+  if (a >= 1e9) return `${s}${nf2.format(a / 1e9)} MM`;
   if (a >= 1e6) return `${s}$${nf1.format(a / 1e6)} M`;
   if (a >= 1e3) return `${s}$${nf.format(a / 1e3)} mil`;
   return `${s}$${nf.format(a)}`;
@@ -66,9 +67,20 @@ export function SeriesChart({
   format?: (n: number) => string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const W = 760;
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(760);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setW(Math.max(320, Math.round(el.clientWidth))));
+    ro.observe(el);
+    setW(Math.max(320, Math.round(el.clientWidth)));
+    return () => ro.disconnect();
+  }, []);
+  const longest = labels.reduce((m, l) => Math.max(m, l.length), 0);
+  const rotate = labels.length > 6 && (W - 76) / Math.max(labels.length, 1) < longest * 6.2;
   const H = height;
-  const pad = { l: 64, r: 12, t: 12, b: 34 };
+  const pad = { l: 64, r: 12, t: 12, b: rotate ? 78 : 34 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
   const n = labels.length;
@@ -90,7 +102,7 @@ export function SeriesChart({
   const ticks = Array.from({ length: 5 }, (_, i) => min + ((max - min) * i) / 4);
   const bars = series.filter((s) => s.kind === "bar");
   const bw = Math.max(2, Math.min(28, (step * 0.7) / Math.max(bars.length, 1)));
-  const labelEvery = Math.ceil(n / 14);
+  const labelEvery = rotate ? 1 : Math.max(1, Math.ceil((n * (longest * 6.2 + 8)) / iw));
   const zeroY = y(0);
 
   const pathFor = (s: Series) => {
@@ -105,8 +117,8 @@ export function SeriesChart({
   };
 
   return (
-    <div className="rct-chart">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" onMouseLeave={() => setHover(null)}>
+    <div className="rct-chart" ref={box}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" onMouseLeave={() => setHover(null)}>
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke="var(--gridline)" />
@@ -116,7 +128,7 @@ export function SeriesChart({
         {min < 0 && <line x1={pad.l} x2={W - pad.r} y1={zeroY} y2={zeroY} stroke="var(--baseline)" />}
         {labels.map((l, i) =>
           i % labelEvery === 0 ? (
-            <text key={i} x={x(i)} y={H - 12} textAnchor="middle" className="rct-axis">{l}</text>
+            <text key={i} x={x(i)} y={rotate ? H - pad.b + 14 : H - 12} textAnchor={rotate ? "end" : "middle"} transform={rotate ? `rotate(-40 ${x(i)} ${H - pad.b + 14})` : undefined} className="rct-axis">{rotate && l.length > 16 ? l.slice(0, 15) + "…" : l}</text>
           ) : null
         )}
         {series.map((s, si) => {

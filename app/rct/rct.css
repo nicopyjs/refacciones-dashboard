@@ -43,7 +43,7 @@
 .rct-empty { padding: 28px 8px; text-align: center; color: var(--muted); font-size: 13px; }
 
 .rct-chart { position: relative; }
-.rct-chart svg { width: 100%; height: auto; display: block; }
+.rct-chart svg { display: block; max-width: 100%; }
 .rct-axis { font-size: 10.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 .rct-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
 .rct-legend span { display: inline-flex; align-items: center; gap: 6px; }
