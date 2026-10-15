@@ -9,7 +9,7 @@ const MOSTRAR_INSUMOS = false;
 export default function TopNav({
   active,
 }: {
-  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "rct" | "diagramas";
+  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "rct" | "retrofit" | "diagramas";
 }) {
   return (
     <nav className="top-nav">
@@ -30,7 +30,8 @@ export default function TopNav({
       )}
       <Link href="/facturacion" className={active === "facturacion" ? "active" : ""}>Tablero Facturación RCT</Link>
       <Link href="/rct" className={active === "rct" ? "active" : ""}>Venta y Gastos RCT</Link>
-      <Link href="/diagramas" className={active === "diagramas" ? "active" : ""}>Diagramas</Link>
+      <Link href="/retrofit" className={active === "retrofit" ? "active" : ""}>Retrofit (Pipedrive)</Link>
+      <Link href="/diagramas"className={active === "diagramas" ? "active" : ""}>Diagramas</Link>
       <ThemeToggle />
     </nav>
   );
