@@ -123,6 +123,9 @@ export default function CertificacionDashboard({
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [avanceFiltro, setAvanceFiltro] = useState<"" | "enCurso" | "completo" | "sinAvance">("");
+  const [showSinAvance, setShowSinAvance] = useState(false);
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -199,7 +202,18 @@ export default function CertificacionDashboard({
   }
 
   const q = search.trim().toLowerCase();
-  const filtered = q ? proyectos.filter((p) => p.proyecto.toLowerCase().includes(q)) : proyectos;
+  const matches = proyectos.filter((p) => {
+    if (q && !p.proyecto.toLowerCase().includes(q)) return false;
+    if (estadoFiltro && (p.estadoGeneral ?? "⚪ Sin iniciar") !== estadoFiltro) return false;
+    if (avanceFiltro === "completo" && p.pctAvance < 0.999) return false;
+    if (avanceFiltro === "enCurso" && (p.pctAvance === 0 || p.pctAvance >= 0.999)) return false;
+    if (avanceFiltro === "sinAvance" && p.pctAvance !== 0) return false;
+    return true;
+  });
+  const sinAvance = matches.filter((p) => p.pctAvance === 0);
+  const conAvance = matches.filter((p) => p.pctAvance > 0);
+  const filtered = showSinAvance || avanceFiltro === "sinAvance" ? matches : conAvance;
+  const sinAvanceOculto = !(showSinAvance || avanceFiltro === "sinAvance") && sinAvance.length > 0;
   const porAvance = [...proyectos].sort((a, b) => b.pctAvance - a.pctAvance);
 
   return (
@@ -327,13 +341,35 @@ export default function CertificacionDashboard({
         <section className="summary">
           <h2>Detalle de certificación por proyecto</h2>
           <p className="hint">Estado de cada paso: documentos SEC, SEREMI y cartas Metrogas.</p>
-          <input
-            className="search-box"
-            type="text"
-            placeholder="Buscar proyecto…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="filter-bar">
+            <input
+              className="search-box"
+              type="text"
+              placeholder="Buscar proyecto…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select className="search-box" value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)}>
+              <option value="">Todos los estados</option>
+              {estadoCounts.map(([label, n]) => (
+                <option key={label} value={label}>{label} ({n})</option>
+              ))}
+            </select>
+            <select
+              className="search-box"
+              value={avanceFiltro}
+              onChange={(e) => setAvanceFiltro(e.target.value as typeof avanceFiltro)}
+            >
+              <option value="">Todo avance</option>
+              <option value="enCurso">En curso</option>
+              <option value="completo">Completos (100%)</option>
+              <option value="sinAvance">Sin avance</option>
+            </select>
+            <label className="filter-check">
+              <input type="checkbox" checked={showSinAvance} onChange={(e) => setShowSinAvance(e.target.checked)} />
+              Mostrar proyectos sin avance
+            </label>
+          </div>
           <div className="table-scroll">
             <table className="data-table">
               <thead>
@@ -371,6 +407,19 @@ export default function CertificacionDashboard({
                     <td>{estadoChip(p.estadoGeneral ?? "⚪ Sin iniciar")}</td>
                   </tr>
                 ))}
+                {sinAvanceOculto && (
+                  <tr className="collapsed-row">
+                    <td colSpan={PASOS.length + 5}>
+                      <button type="button" className="collapsed-btn" onClick={() => setShowSinAvance(true)}>
+                        ▸ {sinAvance.length} proyecto{sinAvance.length === 1 ? "" : "s"} sin avance (ocultos) — mostrar
+                      </button>
+                      <span className="collapsed-names">{sinAvance.map((p) => p.proyecto).join(" · ")}</span>
+                    </td>
+                  </tr>
+                )}
+                {filtered.length === 0 && !sinAvanceOculto && (
+                  <tr><td colSpan={PASOS.length + 5} className="wrap-col">Ningún proyecto coincide con los filtros.</td></tr>
+                )}
               </tbody>
             </table>
           </div>

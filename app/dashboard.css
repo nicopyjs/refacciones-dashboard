@@ -377,6 +377,13 @@ td.day-col.past-col .task-empty { opacity: .5; }
   margin-bottom: 12px; font-family: inherit;
   transition: border-color .14s ease, box-shadow .14s ease;
 }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-start; }
+.filter-bar .search-box { width: auto; min-width: 160px; }
+.filter-bar input.search-box { width: 100%; min-width: 0; }
+.filter-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); padding: 8px 0; cursor: pointer; }
+table.data-table tr.collapsed-row td { white-space: normal; padding: 10px 11px; color: var(--muted); font-size: 12px; }
+.collapsed-btn { background: none; border: none; color: var(--accent); cursor: pointer; font: inherit; font-weight: 600; padding: 0; margin-right: 10px; }
+.collapsed-names { line-height: 1.6; }
 .search-box::placeholder { color: var(--muted); }
 .search-box:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 
