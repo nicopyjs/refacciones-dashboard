@@ -3,8 +3,11 @@
 // apenas existan, para que los negocios del año nuevo no queden fuera del dashboard.
 
 export const PIPELINE_ID = 3;
-export const STAGE_ADJ_IDS = [18, 29, 78, 84]; // Adjudicada 2023 / 2024 / 2025 / 2026
-export const STAGE_PERD_IDS = [19, 37, 82, 85]; // PERDIDO / Perdidos 2024 / Perdido 2025 / Perdido 2026
+// El año de cierre es el de la ETAPA (columna de Pipedrive), no el de la fecha del negocio.
+export const STAGE_ADJ_YEAR: Record<number, string> = { 18: "2023", 29: "2024", 78: "2025", 84: "2026" }; // Adjudicada YYYY
+export const STAGE_PERD_YEAR: Record<number, string> = { 19: "2023", 37: "2024", 82: "2025", 85: "2026" }; // PERDIDO (≤2023) / Perdidos 2024 / Perdido 2025 / Perdido 2026
+export const STAGE_ADJ_IDS = Object.keys(STAGE_ADJ_YEAR).map(Number);
+export const STAGE_PERD_IDS = Object.keys(STAGE_PERD_YEAR).map(Number);
 export const STAGE_ENV = 14; // Enviada
 export const STAGE_EARLY: { id: number; label: string }[] = [
   { id: 12, label: "Prospección" },
@@ -30,10 +33,14 @@ export interface RetrofitDeal {
   owner: string;
   estado: Estado;
   stageId: number;
+  /** Estado en Pipedrive: open / won / lost. El tablero de Pipedrive solo muestra los open. */
+  status: string;
   currency: string;
   rawValue: number;
   /** Valor en CLP (UF convertida). */
   clp: number;
+  /** Año de la etapa (Adjudicada/Perdido YYYY); null si no es una etapa de cierre. */
+  anio: string | null;
   /** Fecha (YYYY-MM-DD) que ubica el negocio en el tiempo. */
   fecha: string | null;
   fechaEnvio: string | null;
@@ -61,6 +68,7 @@ interface RawDeal {
   org_name?: string | null;
   org_id?: { name?: string } | number | null;
   stage_change_time: string | null;
+  lost_reason?: string | null;
   [key: string]: unknown;
 }
 
@@ -128,7 +136,8 @@ export async function getRetrofitData(): Promise<RetrofitData> {
         : estado === "env"
           ? fechaEnvio ?? day(r.stage_change_time)
           : day(r.stage_change_time);
-    const causa = typeof r[F_CAUSA_RECHAZO] === "string" ? (r[F_CAUSA_RECHAZO] as string).trim() : "";
+    const causaCampo = typeof r[F_CAUSA_RECHAZO] === "string" ? (r[F_CAUSA_RECHAZO] as string).trim() : "";
+    const causa = causaCampo || (typeof r.lost_reason === "string" ? r.lost_reason.trim() : "");
     const org = typeof r.org_id === "object" && r.org_id ? r.org_id.name : r.org_name;
 
     deals.push({
@@ -138,6 +147,8 @@ export async function getRetrofitData(): Promise<RetrofitData> {
       owner: r.owner_name || "Sin ejecutivo",
       estado,
       stageId,
+      status: r.status,
+      anio: estado === "adj" ? STAGE_ADJ_YEAR[stageId] : estado === "perd" ? STAGE_PERD_YEAR[stageId] : null,
       currency,
       rawValue,
       clp: currency === "CLF" ? rawValue * ufRate : rawValue,

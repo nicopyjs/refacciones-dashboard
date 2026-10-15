@@ -32,15 +32,17 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
   const [moneda, setMoneda] = useState<Moneda>("CLP");
   const [vista, setVista] = useState<Vista>("adj");
   const [search, setSearch] = useState("");
+  const [conLost, setConLost] = useState(false);
 
-  const deals = useMemo(() => data?.deals ?? [], [data]);
+  const allDeals = useMemo(() => data?.deals ?? [], [data]);
+  const nLost = useMemo(() => allDeals.filter((d) => d.status === "lost").length, [allDeals]);
+  // Como el tablero de Pipedrive, por defecto solo cuentan los negocios abiertos/ganados.
+  const deals = useMemo(() => (conLost ? allDeals : allDeals.filter((d) => d.status !== "lost")), [allDeals, conLost]);
   const uf = data?.ufRate ?? 39000;
 
   const years = useMemo(() => {
     const ys = new Set<string>();
-    deals.forEach((d) => {
-      if ((d.estado === "adj" || d.estado === "perd") && d.fecha) ys.add(d.fecha.slice(0, 4));
-    });
+    deals.forEach((d) => d.anio && ys.add(d.anio));
     return [...ys].sort().reverse();
   }, [deals]);
 
@@ -59,7 +61,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
   const money = (clp: number) => (moneda === "UF" ? `${fmtNum(clp / uf)} UF` : fmtCompact(clp));
   const moneyFromUnit = (v: number) => (moneda === "UF" ? `${fmtNum(v)} UF` : fmtCompact(v));
 
-  const inYear = (d: RetrofitDeal) => year === "all" || (d.fecha?.startsWith(year) ?? false);
+  const inYear = (d: RetrofitDeal) => year === "all" || d.anio === year;
 
   const adj = useMemo(() => deals.filter((d) => d.estado === "adj" && inYear(d)), [deals, year]); // eslint-disable-line react-hooks/exhaustive-deps
   const perd = useMemo(() => deals.filter((d) => d.estado === "perd" && inYear(d)), [deals, year]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -175,11 +177,15 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
 
         <div className="rct-filters">
           <label>
-            Año de cierre
+            Año (etapa)
             <select value={year} onChange={(e) => setYear(e.target.value)}>
               {years.map((y) => (<option key={y} value={y}>{y}</option>))}
               <option value="all">Todos</option>
             </select>
+          </label>
+          <label style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-end", paddingBottom: 8 }}>
+            <input type="checkbox" checked={conLost} onChange={(e) => setConLost(e.target.checked)} />
+            Incluir {nLost} negocios marcados “perdido” en Pipedrive (el tablero los oculta)
           </label>
           <div className="seg">
             Moneda
@@ -336,9 +342,9 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
         </section>
 
         <footer className="note">
-          <strong>Sobre esta página:</strong> lee el pipeline RETROFIT de Pipedrive en cada visita (cache de 5 minutos). Los montos en UF se
+          <strong>Sobre esta página:</strong> lee el pipeline RETROFIT de Pipedrive en cada visita (cache de 5 minutos). Por defecto cuenta solo los negocios abiertos, igual que las columnas del tablero de Pipedrive; el interruptor suma los marcados como perdidos (archivados). Los montos en UF se
           convierten a CLP con la UF del día. “Adjudicado” y “Perdido” se ubican por la fecha del campo personalizado del negocio y, si falta,
-          por la fecha de cambio de etapa; el filtro de año aplica a esos dos grupos. Cuando se cree una etapa nueva (p. ej. “Adjudicada 2027”),
+          por la fecha de cambio de etapa; el año es el de la etapa de Pipedrive (Adjudicada/Perdido YYYY), igual que las columnas del tablero. Cuando se cree una etapa nueva (p. ej. “Adjudicada 2027”),
           hay que agregar su id en <code>lib/retrofit.ts</code>.
         </footer>
       </div>
