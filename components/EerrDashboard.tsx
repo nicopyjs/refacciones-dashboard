@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EerrData, EerrLine } from "@/lib/eerr/types";
 import TopNav from "./TopNav";
@@ -23,7 +23,8 @@ const TIPOS = [TG_DIRECTO, TG_INDIRECTO, TG_ADMIN];
 const TIPO_COLOR: Record<string, string> = { [TG_DIRECTO]: "#2563eb", [TG_INDIRECTO]: "#d97706", [TG_ADMIN]: "#7c3aed" };
 const SIN_CLASIF = "(sin clasificación)";
 
-interface Filters { year: string; month: string; cn: string }
+/** month: meses elegidos ("01".."12"); vacío = todos. */
+interface Filters { year: string; month: string[]; cn: string }
 
 const TABS = [
   { id: "ingresos", label: "Ingresos" },
@@ -93,6 +94,50 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
+/** Selector de varios meses (vacío = todos). */
+function MonthPicker({ value, onChange }: { value: string[]; onChange: (m: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const toggle = (m: string) => onChange(value.includes(m) ? value.filter((x) => x !== m) : [...value, m].sort());
+  const label = value.length === 0 ? "Todos" : value.length <= 2 ? value.map((m) => MESES[Number(m) - 1]).join(", ") : `${value.length} meses`;
+  return (
+    <div className="eerr-multi" ref={ref}>
+      <span>Mes</span>
+      <button type="button" className="eerr-multi-btn" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {label} <i aria-hidden>▾</i>
+      </button>
+      {open && (
+        <div className="eerr-multi-pop" role="listbox" aria-multiselectable="true">
+          <label className="all">
+            <input type="checkbox" checked={value.length === 0} onChange={() => onChange([])} /> Todos
+          </label>
+          {MESES.map((m, i) => {
+            const k = String(i + 1).padStart(2, "0");
+            return (
+              <label key={k}>
+                <input type="checkbox" checked={value.includes(k)} onChange={() => toggle(k)} /> {m}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ───────────── Contexto filtrado ───────────── */
 interface Ctx {
   f: Filters;
@@ -114,7 +159,7 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
   const [tab, setTab] = useState<TabId>("ingresos");
   const years = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.d.slice(0, 4)))].sort().reverse() : []), [data]);
   const cns = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.cn))].sort() : []), [data]);
-  const [f, setF] = useState<Filters>({ year: "", month: "all", cn: "all" });
+  const [f, setF] = useState<Filters>({ year: "", month: [], cn: "all" });
   const ff: Filters = { ...f, year: f.year || years[0] || "all" };
 
   async function logout() {
@@ -125,14 +170,16 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
 
   const ctx = useMemo<Ctx | null>(() => {
     if (!data) return null;
-    const inPeriod = (d: string) => (ff.year === "all" || d.startsWith(ff.year)) && (ff.month === "all" || d.slice(5, 7) === ff.month);
+    const inPeriod = (d: string) => (ff.year === "all" || d.startsWith(ff.year)) && (ff.month.length === 0 || ff.month.includes(d.slice(5, 7)));
     const all = data.lines.filter((l) => inPeriod(l.d) && (ff.cn === "all" || l.cn === ff.cn));
     const ventas = all.filter((l) => l.t === "V");
     const gastos = all.filter((l) => l.t === "G");
     const hayPpto = ff.cn === "all";
     const pv = hayPpto ? data.pptoVenta.filter((p) => inPeriod(p.d)) : [];
     const pg = hayPpto ? data.pptoGasto.filter((p) => inPeriod(p.d)) : [];
-    const months = monthRange([...all.map((l) => l.d.slice(0, 7)), ...pv.map((p) => p.d.slice(0, 7)), ...pg.map((p) => p.d.slice(0, 7))]);
+    const yms = [...all.map((l) => l.d.slice(0, 7)), ...pv.map((p) => p.d.slice(0, 7)), ...pg.map((p) => p.d.slice(0, 7))];
+    // Con meses elegidos se muestran solo esos (sin rellenar los intermedios).
+    const months = ff.month.length ? [...new Set(yms)].sort() : monthRange(yms);
     const pptoPorTipo: Record<string, number> = {};
     for (const p of pg) pptoPorTipo[p.tg] = (pptoPorTipo[p.tg] ?? 0) + p.m;
     return {
@@ -149,7 +196,7 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
       data,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, ff.year, ff.month, ff.cn]);
+  }, [data, ff.year, ff.month.join(","), ff.cn]);
 
   const head = (
     <>
@@ -209,13 +256,7 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
-          <label>
-            <span>Mes</span>
-            <select value={ff.month} onChange={(e) => set({ month: e.target.value })}>
-              <option value="all">Todos</option>
-              {MESES.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
-            </select>
-          </label>
+          <MonthPicker value={ff.month} onChange={(month) => set({ month })} />
           <label className="wide">
             <span>Centro de negocio</span>
             <select value={ff.cn} onChange={(e) => set({ cn: e.target.value })}>
@@ -427,7 +468,7 @@ function construirArbol(c: Ctx): Nodo[] {
   const pptoTc = new Map<string, number>();
   const pptoT = new Map<string, number>();
   if (c.hayPpto) {
-    for (const p of c.data.pptoGasto.filter((p) => (c.f.year === "all" || p.d.startsWith(c.f.year)) && (c.f.month === "all" || p.d.slice(5, 7) === c.f.month))) {
+    for (const p of c.data.pptoGasto.filter((p) => (c.f.year === "all" || p.d.startsWith(c.f.year)) && (c.f.month.length === 0 || c.f.month.includes(p.d.slice(5, 7))))) {
       pptoT.set(p.tg, (pptoT.get(p.tg) ?? 0) + p.m);
       pptoTc.set(`${p.tg}|${p.cl}`, (pptoTc.get(`${p.tg}|${p.cl}`) ?? 0) + p.m);
     }
