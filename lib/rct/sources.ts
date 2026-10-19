@@ -24,7 +24,7 @@ const MOV_HEADERS: Record<string, string> = {
   Y: "date",
 };
 
-async function authFetch(url: string): Promise<Response> {
+export async function authFetch(url: string): Promise<Response> {
   const token = await getGoogleToken();
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   if (!res.ok) {
@@ -44,7 +44,7 @@ export async function sheetValues(id: string, tab: string): Promise<unknown[][]>
   return j.values ?? [];
 }
 
-async function batchGet(id: string, ranges: string[]): Promise<unknown[][][]> {
+export async function batchGet(id: string, ranges: string[]): Promise<unknown[][][]> {
   const params = ranges.map((r) => `ranges=${q(r)}`).join("&");
   const res = await authFetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchGet?${params}&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`
