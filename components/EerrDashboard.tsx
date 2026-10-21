@@ -23,7 +23,9 @@ const TIPO_COLOR: Record<string, string> = { [TG_DIRECTO]: "#2563eb", [TG_INDIRE
 const SIN_CLASIF = "(sin clasificación)";
 
 /** month: meses elegidos ("01".."12"); vacío = todos. */
-interface Filters { year: string; month: string[]; cn: string }
+type Eco = "Con" | "Sin"; // con / sin provisiones
+const CUENTA_PROVISION = "3110101002";
+interface Filters { year: string; month: string[]; cn: string; eco: Eco }
 
 const TABS = [
   { id: "ingresos", label: "Ingresos" },
@@ -114,7 +116,7 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
   const [tab, setTab] = useState<TabId>("ingresos");
   const years = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.d.slice(0, 4)))].sort().reverse() : []), [data]);
   const cns = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.cn))].sort() : []), [data]);
-  const [f, setF] = useState<Filters>({ year: "", month: [], cn: "all" });
+  const [f, setF] = useState<Filters>({ year: "", month: [], cn: "all", eco: "Con" });
   const ff: Filters = { ...f, year: f.year || years[0] || "all" };
 
   async function logout() {
@@ -126,7 +128,7 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
   const ctx = useMemo<Ctx | null>(() => {
     if (!data) return null;
     const inPeriod = (d: string) => (ff.year === "all" || d.startsWith(ff.year)) && (ff.month.length === 0 || ff.month.includes(d.slice(5, 7)));
-    const all = data.lines.filter((l) => inPeriod(l.d) && (ff.cn === "all" || l.cn === ff.cn));
+    const all = data.lines.filter((l) => inPeriod(l.d) && (ff.cn === "all" || l.cn === ff.cn) && !(ff.eco === "Sin" && l.t === "V" && l.ac === CUENTA_PROVISION));
     const ventas = all.filter((l) => l.t === "V");
     const gastos = all.filter((l) => l.t === "G");
     const hayPpto = ff.cn === "all";
@@ -151,7 +153,7 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
       data,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, ff.year, ff.month.join(","), ff.cn]);
+  }, [data, ff.year, ff.month.join(","), ff.cn, ff.eco]);
 
   const head = (
     <>
@@ -219,6 +221,14 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
               {cns.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
+          <div className="seg" role="group" aria-label="Provisiones">
+            <span>Provisiones</span>
+            <div>
+              {(["Con", "Sin"] as Eco[]).map((e) => (
+                <button key={e} className={ff.eco === e ? "on" : ""} onClick={() => set({ eco: e })}>{e === "Sin" ? "Sin provisiones" : "Con provisiones"}</button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {ff.cn !== "all" && (
