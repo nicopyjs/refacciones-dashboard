@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LineRow, PptoRow, RctData } from "@/lib/rct/types";
 import TopNav from "./TopNav";
+import MonthPicker from "./MonthPicker";
 import { Bullet, Gauge, HBars, SeriesChart, fmtCLP, fmtNum, fmtPct, labelYm } from "./RctCharts";
 import "../app/dashboard.css";
 import "../app/rct/rct.css";
 
 const CN_INDIRECTOS = "RCTA - GENERAL REFACCION CENTRALES TERMICAS";
 const MANO_OBRA = new Set(["MANO DE OBRA DIRECTA", "MANO DE OBRA G.A.F", "MANO DE OBRA HONORARIOS", "MANO DE OBRA INDIRECTA", "MANO DE OBRA"]);
-const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 const C_VENTA = "#16a34a";
 const C_GASTO = "#dc2626";
@@ -19,7 +19,7 @@ const C_PRES = "#2563eb";
 
 type Eco = "Con" | "Sin"; // con / sin provisiones
 type Ctl = "year" | "month" | "cn" | "eco";
-interface Filters { year: string; month: string; cn: string; eco: Eco }
+interface Filters { year: string; month: string[]; cn: string; eco: Eco }
 
 const TABS: { id: string; label: string; ctl: Ctl[]; project?: boolean }[] = [
   { id: "ventas", label: "Ventas RCT", ctl: ["year", "month", "cn", "eco"] },
@@ -189,7 +189,7 @@ interface Ctx {
 
 function monthsOf(lines: LineRow[], f: Filters): string[] {
   const ym = lines.map((l) => l.d.slice(0, 7));
-  if (f.year !== "all" && f.month === "all") {
+  if (f.year !== "all" && f.month.length === 0) {
     const r = monthRange(ym);
     return r.length ? r : [];
   }
@@ -203,7 +203,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
 
   const years = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.d.slice(0, 4)))].sort().reverse() : []), [data]);
   const cns = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.cn))].sort() : []), [data]);
-  const [f, setF] = useState<Filters>({ year: "", month: "all", cn: "all", eco: "Con" });
+  const [f, setF] = useState<Filters>({ year: "", month: [], cn: "all", eco: "Con" });
   const year = f.year || years[0] || "all";
   const ff: Filters = { ...f, year };
 
@@ -219,7 +219,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
     const all = data.lines.filter(
       (l) =>
         (ff.year === "all" || l.d.startsWith(ff.year)) &&
-        (ff.month === "all" || l.d.slice(5, 7) === ff.month) &&
+        (ff.month.length === 0 || ff.month.includes(l.d.slice(5, 7))) &&
         (ff.cn === "all" || l.cn === ff.cn) &&
         !(ff.eco === "Sin" && l.t === "V" && l.x)
     );
@@ -299,13 +299,7 @@ export default function RctDashboard({ data, error, generatedAt, stale }: { data
             </label>
           )}
           {cur.ctl.includes("month") && (
-            <label>
-              <span>Mes</span>
-              <select value={ff.month} onChange={(e) => set({ month: e.target.value })}>
-                <option value="all">Todos</option>
-                {MESES.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
-              </select>
-            </label>
+            <MonthPicker value={ff.month} onChange={(month) => set({ month })} />
           )}
           {cur.ctl.includes("cn") && (
             <label className="wide">
