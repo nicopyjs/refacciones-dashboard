@@ -127,6 +127,7 @@ export default function CertificacionDashboard({
   const [avanceFiltro, setAvanceFiltro] = useState<"" | "enCurso" | "completo" | "sinAvance">("");
   const [showSinAvance, setShowSinAvance] = useState(false);
   const [showBarSinAvance, setShowBarSinAvance] = useState(false);
+  const [showBarTerminados, setShowBarTerminados] = useState(false);
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -216,7 +217,8 @@ export default function CertificacionDashboard({
   const sinAvanceOculto = !(showSinAvance || avanceFiltro === "sinAvance") && sinAvance.length > 0;
   const porAvanceAll = [...proyectos].sort((a, b) => b.pctAvance - a.pctAvance);
   const barSinAvance = porAvanceAll.filter((p) => p.pctAvance === 0).length;
-  const porAvance = showBarSinAvance ? porAvanceAll : porAvanceAll.filter((p) => p.pctAvance > 0);
+  const barTerminados = porAvanceAll.filter((p) => p.terminado).length;
+  const porAvance = porAvanceAll.filter((p) => (showBarSinAvance || p.pctAvance > 0) && (showBarTerminados || !p.terminado));
 
   return (
     <div className="viz-root">
@@ -291,12 +293,20 @@ export default function CertificacionDashboard({
         <section className="summary">
           <h2>Avance de certificación por proyecto</h2>
           <p className="hint">Porcentaje de pasos completados (documentos SEC, SEREMI y cartas Metrogas).</p>
-          {barSinAvance > 0 && (
-            <label className="filter-check" style={{ marginBottom: 8 }}>
-              <input type="checkbox" checked={showBarSinAvance} onChange={(e) => setShowBarSinAvance(e.target.checked)} />
-              Mostrar proyectos sin avance ({barSinAvance})
-            </label>
-          )}
+          <div className="filter-bar" style={{ marginBottom: 8 }}>
+            {barSinAvance > 0 && (
+              <label className="filter-check">
+                <input type="checkbox" checked={showBarSinAvance} onChange={(e) => setShowBarSinAvance(e.target.checked)} />
+                Mostrar proyectos sin avance ({barSinAvance})
+              </label>
+            )}
+            {barTerminados > 0 && (
+              <label className="filter-check">
+                <input type="checkbox" checked={showBarTerminados} onChange={(e) => setShowBarTerminados(e.target.checked)} />
+                Mostrar proyectos terminados ({barTerminados})
+              </label>
+            )}
+          </div>
           <div>
             {porAvance.map((p) => (
               <div className="bar-row" key={p.proyecto}>
@@ -305,7 +315,7 @@ export default function CertificacionDashboard({
                   <div className="bar-fill" style={{ width: `${p.pctAvance * 100}%`, background: p.aprobacionSeremi === "✗" ? "var(--status-critical)" : avanceColor(p.pctAvance) }} />
                 </div>
                 <div className="n" title={p.aprobacionSeremi === "✗" ? "Terminado, rechazado por SEREMI" : undefined}>
-                  {Math.round(p.pctAvance * 100)}%{p.aprobacionSeremi === "✗" ? " ✗" : ""}
+                  {Math.round(p.pctAvance * 100)}%
                 </div>
               </div>
             ))}
