@@ -49,10 +49,10 @@ function symKind(v: string | null): Sym {
   return "pend";
 }
 
-function symbolCell(v: string | null) {
+function symbolCell(v: string | null, fecha?: string) {
   const k = symKind(v);
   return (
-    <td className={`sym sym-${k}`} title={k === "pend" ? "Pendiente" : undefined}>
+    <td className={`sym sym-${k}`} title={fecha ?? (k === "pend" ? "Pendiente" : undefined)}>
       {k === "pend" ? "·" : v}
     </td>
   );
@@ -126,6 +126,7 @@ export default function CertificacionDashboard({
   const [estadoFiltro, setEstadoFiltro] = useState("");
   const [avanceFiltro, setAvanceFiltro] = useState<"" | "enCurso" | "completo" | "sinAvance">("");
   const [showSinAvance, setShowSinAvance] = useState(false);
+  const [showBarSinAvance, setShowBarSinAvance] = useState(false);
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -137,11 +138,10 @@ export default function CertificacionDashboard({
     const total = proyectos.length;
     const avgPct = total > 0 ? Math.round((proyectos.reduce((s, p) => s + p.pctAvance, 0) / total) * 100) : 0;
     const cartasCompletas = proyectos.filter((p) => p.carta35 === "✓" && p.carta15 === "✓").length;
-    const aprobados = proyectos.filter((p) => estadoKind(p.estadoGeneral) === "good").length;
-    const conObservaciones = proyectos.filter((p) => p.aprobacionSeremi === "✗").length;
-    const rechazosActivos = rechazos.filter((r) => estadoKind(r.estado) !== "good").length;
-    return { total, avgPct, cartasCompletas, aprobados, conObservaciones, rechazosActivos };
-  }, [proyectos, rechazos]);
+    const aprobados = proyectos.filter((p) => p.aprobacionSeremi === "✓").length;
+    const rechazosActivos = proyectos.filter((p) => p.aprobacionSeremi === "✗").length;
+    return { total, avgPct, cartasCompletas, aprobados, rechazosActivos };
+  }, [proyectos]);
 
   const estadoCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -214,7 +214,9 @@ export default function CertificacionDashboard({
   const conAvance = matches.filter((p) => p.pctAvance > 0);
   const filtered = showSinAvance || avanceFiltro === "sinAvance" ? matches : conAvance;
   const sinAvanceOculto = !(showSinAvance || avanceFiltro === "sinAvance") && sinAvance.length > 0;
-  const porAvance = [...proyectos].sort((a, b) => b.pctAvance - a.pctAvance);
+  const porAvanceAll = [...proyectos].sort((a, b) => b.pctAvance - a.pctAvance);
+  const barSinAvance = porAvanceAll.filter((p) => p.pctAvance === 0).length;
+  const porAvance = showBarSinAvance ? porAvanceAll : porAvanceAll.filter((p) => p.pctAvance > 0);
 
   return (
     <div className="viz-root">
@@ -241,7 +243,6 @@ export default function CertificacionDashboard({
           <div className="stat-tile"><div className="v">{stats.avgPct}%</div><div className="l">Avance promedio</div></div>
           <div className="stat-tile"><div className="v" style={{ color: "var(--status-good)" }}>{stats.aprobados}</div><div className="l">Proyectos aprobados</div></div>
           <div className="stat-tile"><div className="v">{stats.cartasCompletas}</div><div className="l">Con cartas 35% y 15% firmadas</div></div>
-          <div className="stat-tile"><div className="v" style={{ color: stats.conObservaciones > 0 ? "var(--status-warning)" : undefined }}>{stats.conObservaciones}</div><div className="l">Con observaciones SEREMI</div></div>
           <div className="stat-tile"><div className="v" style={{ color: stats.rechazosActivos > 0 ? "var(--status-critical)" : undefined }}>{stats.rechazosActivos}</div><div className="l">Rechazos SEREMI activos</div></div>
         </div>
 
@@ -290,6 +291,12 @@ export default function CertificacionDashboard({
         <section className="summary">
           <h2>Avance de certificación por proyecto</h2>
           <p className="hint">Porcentaje de pasos completados (documentos SEC, SEREMI y cartas Metrogas).</p>
+          {barSinAvance > 0 && (
+            <label className="filter-check" style={{ marginBottom: 8 }}>
+              <input type="checkbox" checked={showBarSinAvance} onChange={(e) => setShowBarSinAvance(e.target.checked)} />
+              Mostrar proyectos sin avance ({barSinAvance})
+            </label>
+          )}
           <div>
             {porAvance.map((p) => (
               <div className="bar-row" key={p.proyecto}>
@@ -374,7 +381,7 @@ export default function CertificacionDashboard({
             <table className="data-table">
               <thead>
                 <tr className="grp-row">
-                  <th colSpan={2} />
+                  <th colSpan={1} />
                   <th colSpan={9} className="grp-sec">Documentos SEC</th>
                   <th colSpan={5} className="grp-seremi">SEREMI</th>
                   <th colSpan={4} className="grp-metrogas">Cartas Metrogas</th>
@@ -382,7 +389,6 @@ export default function CertificacionDashboard({
                 </tr>
                 <tr>
                   <th>Proyecto</th>
-                  <th>Contrato</th>
                   {PASOS.map((x) => (
                     <th key={x.key}>{x.label}</th>
                   ))}
@@ -395,9 +401,8 @@ export default function CertificacionDashboard({
                 {filtered.map((p) => (
                   <tr key={p.proyecto}>
                     <td className="obra-col">{p.proyecto}</td>
-                    <td>{p.contrato ?? "—"}</td>
                     {PASOS.map((x) => (
-                      <Fragment key={x.key}>{symbolCell(p[x.key])}</Fragment>
+                      <Fragment key={x.key}>{symbolCell(p[x.key], p.fechas[x.key])}</Fragment>
                     ))}
                     <td className="wrap-col">{p.fechaCarta ?? "—"}</td>
                     <td>
@@ -409,7 +414,7 @@ export default function CertificacionDashboard({
                 ))}
                 {sinAvanceOculto && (
                   <tr className="collapsed-row">
-                    <td colSpan={PASOS.length + 5}>
+                    <td colSpan={PASOS.length + 4}>
                       <button type="button" className="collapsed-btn" onClick={() => setShowSinAvance(true)}>
                         ▸ {sinAvance.length} proyecto{sinAvance.length === 1 ? "" : "s"} sin avance (ocultos) — mostrar
                       </button>
@@ -418,7 +423,7 @@ export default function CertificacionDashboard({
                   </tr>
                 )}
                 {filtered.length === 0 && !sinAvanceOculto && (
-                  <tr><td colSpan={PASOS.length + 5} className="wrap-col">Ningún proyecto coincide con los filtros.</td></tr>
+                  <tr><td colSpan={PASOS.length + 4} className="wrap-col">Ningún proyecto coincide con los filtros.</td></tr>
                 )}
               </tbody>
             </table>

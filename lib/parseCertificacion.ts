@@ -2,7 +2,6 @@ import { loadWorkbook, rowsWithFills } from "./driveFile";
 
 export interface ProyectoCertificacion {
   proyecto: string;
-  contrato: string | null;
   primeraVisita: string | null;
   informe: string | null;
   segundaVisita: string | null;
@@ -23,6 +22,8 @@ export interface ProyectoCertificacion {
   fechaCarta: string | null;
   pctAvance: number;
   estadoGeneral: string | null;
+  /** Date (dd-mm-yyyy) written in the sheet for each step, shown as tooltip. */
+  fechas: Partial<Record<PasoKey, string>>;
 }
 
 export type PasoKey =
@@ -32,7 +33,7 @@ export type PasoKey =
 
 export type GrupoPaso = "SEC" | "SEREMI" | "Metrogas";
 
-/** The 17 checklist steps of the "Certificación" sheet, in column order (C..S). */
+/** The 17 checklist steps of the "Certificación" sheet, in column order (B..R). */
 export const PASOS: { key: PasoKey; label: string; grupo: GrupoPaso }[] = [
   { key: "primeraVisita", label: "1° Visita", grupo: "SEC" },
   { key: "informe", label: "Informe", grupo: "SEC" },
@@ -72,11 +73,11 @@ export interface CertificacionData {
 
 const CERTIFICACION_FILE_ID = process.env.CERTIFICACION_FILE_ID || "1uLIaDCKqi2zaFBIPILfb8Ja8vv2BOtnq";
 
-// Columns 2-18 of the "Certificación" sheet are the pass/fail checklist steps
+// Columns 1-17 (B..R) of the "Certificación" sheet are the pass/fail checklist steps
 // (1° Visita … Firmada Carta 15%). % Avance is recomputed from these rather than trusting
 // the sheet's cached formula (it divides by 16 and can exceed 100%, and is missing for
 // shared-formula rows).
-const CHECK_COLS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const CHECK_COLS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
 function str(v: unknown): string | null {
   if (v === null || v === undefined) return null;
@@ -84,6 +85,22 @@ function str(v: unknown): string | null {
   if (!s) return null;
   // The sheet marks rejected steps with a plain "X" although its legend says ✗.
   return /^x$/i.test(s) ? "✗" : s;
+}
+
+function fmtDate(d: Date): string {
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${d.getUTCFullYear()}`;
+}
+
+/** A step cell holding a date (or "Fotos") means the step is done → "✓", keeping the date as tooltip. */
+function stepValue(v: unknown): { value: string | null; fecha?: string } {
+  if (v instanceof Date) return { value: "✓", fecha: fmtDate(v) };
+  const s = str(v);
+  if (!s) return { value: null };
+  if (/^fotos$/i.test(s)) return { value: "✓", fecha: "Fotos" };
+  if (/^\d{1,2}[-/.]\d{1,2}[-/.]?\d{2,4}$/.test(s)) return { value: "✓", fecha: s };
+  return { value: s };
 }
 
 export async function getCertificacionData(): Promise<CertificacionData> {
@@ -102,12 +119,16 @@ export async function getCertificacionData(): Promise<CertificacionData> {
     if (proyecto && /RESUMEN|LEYENDA/i.test(proyecto)) break;
     if (!proyecto) continue;
 
-    const checks = CHECK_COLS.map((c) => str(row[c]));
+    const steps = CHECK_COLS.map((c) => stepValue(row[c]));
+    const checks = steps.map((x) => x.value);
+    const fechas: Partial<Record<PasoKey, string>> = {};
+    steps.forEach((x, i) => {
+      if (x.fecha) fechas[PASOS[i].key] = x.fecha;
+    });
     const completados = checks.filter((v) => v === "✓").length;
 
     proyectos.push({
       proyecto,
-      contrato: str(row[1]),
       primeraVisita: checks[0],
       informe: checks[1],
       segundaVisita: checks[2],
@@ -125,9 +146,10 @@ export async function getCertificacionData(): Promise<CertificacionData> {
       cartasSolicitadas: checks[14],
       carta35: checks[15],
       carta15: checks[16],
-      fechaCarta: str(row[19]),
+      fechaCarta: str(row[18]),
       pctAvance: completados / CHECK_COLS.length,
-      estadoGeneral: str(row[21]),
+      estadoGeneral: str(row[20]),
+      fechas,
     });
   }
 
