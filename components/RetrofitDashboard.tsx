@@ -14,7 +14,7 @@ const C_PERD = "#dc2626";
 const C_ENV = "#2563eb";
 
 type Moneda = "CLP" | "UF";
-type Vista = "adj" | "perd" | "env" | "early" | "todos";
+type Vista = "adj" | "perd" | "env" | "carta" | "early" | "todos";
 
 const ESTADO_LABEL: Record<Estado, string> = { adj: "Adjudicado", perd: "Perdido", env: "Enviada", early: "En etapa previa" };
 const ESTADO_KIND: Record<Estado, string> = { adj: "good", perd: "critical", env: "info", early: "muted" };
@@ -76,6 +76,17 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
   const env = useMemo(
     () => (meses.length === 0 ? envAll : envAll.filter((d) => inMonths(d) && (year === "all" || d.fecha?.slice(0, 4) === year))),
     [envAll, meses, year], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // Cartas oferta: negocios con fecha de carta, filtrados por mes (y año) de esa fecha.
+  const cartas = useMemo(
+    () =>
+      deals.filter(
+        (d) =>
+          d.fechaCarta &&
+          (year === "all" || d.fechaCarta.slice(0, 4) === year) &&
+          (meses.length === 0 || meses.includes(Number(d.fechaCarta.slice(5, 7)))),
+      ),
+    [deals, year, meses],
   );
   const early = useMemo(() => deals.filter((d) => d.estado === "early"), [deals]);
 
@@ -139,12 +150,12 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
 
   const tabla = useMemo(() => {
     const base =
-      vista === "adj" ? adj : vista === "perd" ? perd : vista === "env" ? env : vista === "early" ? early : [...adj, ...perd, ...env, ...early];
+      vista === "adj" ? adj : vista === "perd" ? perd : vista === "env" ? env : vista === "carta" ? cartas : vista === "early" ? early : [...adj, ...perd, ...env, ...early];
     const q = search.trim().toLowerCase();
     return base
       .filter((d) => !q || d.title.toLowerCase().includes(q) || d.cliente.toLowerCase().includes(q) || d.owner.toLowerCase().includes(q))
-      .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
-  }, [vista, adj, perd, env, early, search]);
+      .sort((a, b) => (vista === "carta" ? (b.fechaCarta ?? "").localeCompare(a.fechaCarta ?? "") : (b.fecha ?? "").localeCompare(a.fecha ?? "")));
+  }, [vista, adj, perd, env, cartas, early, search]);
 
   if (error || !data) {
     return (
@@ -229,6 +240,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
           <div className="stat-tile"><div className="v" style={{ color: "var(--status-critical)" }}>{money(k.sumPerd)}</div><div className="l">Perdido {yearLabel} · {perd.length} negocios</div></div>
           <div className="stat-tile"><div className="v">{fmtPct(k.tasa)}</div><div className="l">Tasa de adjudicación (adj. / adj.+perd.)</div></div>
           <div className="stat-tile"><div className="v">{money(k.ticket)}</div><div className="l">Ticket promedio adjudicado</div></div>
+          <div className="stat-tile"><div className="v" style={{ color: "#d97706" }}>{cartas.length}</div><div className="l">N° de cartas de oferta · {yearLabel}</div></div>
           <div className="stat-tile"><div className="v" style={{ color: "var(--accent)" }}>{money(k.sumEnv)}</div><div className="l">{meses.length ? "Cartera enviada en el período" : "Cartera enviada vigente"} · {env.length} negocios</div></div>
         </div>
 
@@ -340,6 +352,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
               ["adj", `Adjudicados (${adj.length})`],
               ["perd", `Perdidos (${perd.length})`],
               ["env", `Enviadas (${env.length})`],
+              ["carta", `Cartas de oferta (${cartas.length})`],
               ["early", `Etapas previas (${early.length})`],
               ["todos", "Todos"],
             ] as [Vista, string][]).map(([id, label]) => (
@@ -350,7 +363,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
           <div className="table-scroll">
             <table className="data-table">
               <thead>
-                <tr><th>Negocio</th><th>Cliente</th><th>Ejecutivo</th><th>Monto</th><th>Fecha</th><th>Estado</th></tr>
+                <tr><th>Negocio</th><th>Cliente</th><th>Ejecutivo</th><th>Monto</th><th>{vista === "carta" ? "Fecha carta oferta" : "Fecha"}</th><th>Estado</th></tr>
               </thead>
               <tbody>
                 {tabla.map((d) => (
@@ -359,7 +372,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
                     <td>{d.cliente}</td>
                     <td>{d.owner}</td>
                     <td>{d.currency === "CLF" ? `${fmtNum(d.rawValue)} UF` : fmtCompact(d.rawValue)}</td>
-                    <td>{fmtDate(d.fecha)}</td>
+                    <td>{fmtDate(vista === "carta" ? d.fechaCarta : d.fecha)}</td>
                     <td><span className={`status-chip ${ESTADO_KIND[d.estado]}`}>{ESTADO_LABEL[d.estado]}</span></td>
                   </tr>
                 ))}

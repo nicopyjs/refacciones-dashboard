@@ -44,6 +44,8 @@ export interface RetrofitDeal {
   /** Fecha (YYYY-MM-DD) que ubica el negocio en el tiempo. */
   fecha: string | null;
   fechaEnvio: string | null;
+  /** Fecha (YYYY-MM-DD) de la carta oferta, si existe. */
+  fechaCarta: string | null;
   tieneCarta: boolean;
   tieneReunion: boolean;
   causa: string | null;
@@ -130,6 +132,7 @@ export async function getRetrofitData(): Promise<RetrofitData> {
     const rawValue = Number(r.value) || 0;
     const currency = r.currency || "CLP";
     const fechaEnvio = day(r[F_FECHA_ENVIO]);
+    const fechaCarta = day(r[F_FECHA_CARTA]);
     const fecha =
       estado === "adj"
         ? day(r[F_FECHA_ADJ]) ?? day(r.stage_change_time)
@@ -154,7 +157,8 @@ export async function getRetrofitData(): Promise<RetrofitData> {
       clp: currency === "CLF" ? rawValue * ufRate : rawValue,
       fecha,
       fechaEnvio,
-      tieneCarta: Boolean(day(r[F_FECHA_CARTA])),
+      fechaCarta,
+      tieneCarta: Boolean(fechaCarta),
       tieneReunion: Boolean(day(r[F_FECHA_REUNION])),
       causa: causa ? causa.charAt(0).toUpperCase() + causa.slice(1).toLowerCase() : null,
       url: `${baseUrl()}/deal/${r.id}`,
