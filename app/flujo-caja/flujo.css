@@ -1,0 +1,25 @@
+.flujo-table th,
+.flujo-table td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.flujo-table th:first-child,
+.flujo-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-1);
+  min-width: 190px;
+  white-space: normal;
+}
+.flujo-table tr.eerr-total td:first-child { background: var(--surface-2); }
+
+.flujo-kpi-sub { margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+
+.flujo-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.flujo-badge.si { background: color-mix(in srgb, #7c3aed 16%, transparent); color: #7c3aed; }
+.flujo-badge.no { background: var(--surface-2); color: var(--text-secondary); }
+.flujo-excluida td { opacity: 0.5; }
