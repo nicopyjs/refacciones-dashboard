@@ -154,23 +154,25 @@ export async function getCertificacionData(): Promise<CertificacionData> {
   }
 
   const sheet2 = workbook.getWorksheet("Rechazos SEREMI") ?? workbook.worksheets[1];
-  const { rows: rows2 } = rowsWithFills(sheet2, 9);
+  const { rows: rows2 } = rowsWithFills(sheet2, 10);
 
   const rechazos: RechazoSeremi[] = [];
   for (let r = 3; r < rows2.length; r++) {
     const row = rows2[r];
-    const edificio = str(row[0]);
+    // The sheet's data starts in column B (column A is an empty margin).
+    const txt = (v: unknown) => (v instanceof Date ? fmtDate(v) : str(v));
+    const edificio = str(row[1]);
     if (!edificio || edificio.startsWith("→")) continue;
     rechazos.push({
       edificio,
-      codigoRcta: str(row[1]),
-      fechaRechazo: str(row[2]),
-      razon: str(row[3]),
-      estado: str(row[4]),
-      planAccion: str(row[5]),
-      fechaReingreso: str(row[6]),
-      responsable: str(row[7]),
-      notaAdicional: str(row[8]),
+      codigoRcta: txt(row[2]),
+      fechaRechazo: txt(row[3]),
+      razon: txt(row[4]),
+      estado: txt(row[5]),
+      planAccion: txt(row[6]),
+      fechaReingreso: txt(row[7]),
+      responsable: txt(row[8]),
+      notaAdicional: null,
     });
   }
 
