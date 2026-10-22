@@ -43,7 +43,7 @@ export function build(input: BuildInputs): EerrData {
   for (const r of input.plan.slice(1)) {
     const code = text(r[0]);
     if (!code || plan.has(code)) continue;
-    plan.set(code, { desc: text(r[1]), cl: text(r[4]), mo: text(r[5]), al: text(r[6]) });
+    plan.set(code, { desc: text(r[1]), cl: text(r[4]).replace(/^null$/i, ""), mo: text(r[5]), al: text(r[6]) });
   }
 
   // ---- Centros de negocio (solo imputables, distinct por Code): Code -> descripción ----
@@ -79,7 +79,8 @@ export function build(input: BuildInputs): EerrData {
     // TipoGasto: la clasificación de mano de obra manda; si no, se deduce del centro de negocio.
     let tg = "";
     if (esGasto) {
-      if (cta?.mo) tg = TIPOS_GASTO.get(cta.mo.toLowerCase()) ?? cta.mo; // DAX compara sin distinguir mayúsculas
+      // La clasificación de mano de obra solo manda en cuentas sin clasificación de gasto; el resto se deduce del centro (igual que Power BI).
+      if (cta?.mo && !cta.cl) tg = TIPOS_GASTO.get(cta.mo.toLowerCase()) ?? cta.mo; // DAX compara sin distinguir mayúsculas
       else if (desc.slice(0, 2).toUpperCase() === "GN") tg = "Gasto Administrativo";
       else if (desc.toLowerCase().includes("general")) tg = "Gasto Indirecto";
       else tg = "Gasto Directo";

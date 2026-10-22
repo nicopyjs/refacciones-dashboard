@@ -4,7 +4,7 @@ import { build } from "./build";
 import { loadEerrInputs } from "./sources";
 import type { EerrData } from "./types";
 
-const PREFIX = "eerr:data:v1";
+const PREFIX = "eerr:data:v2";
 const LOCK_KEY = `${PREFIX}:lock`;
 const CHUNK = 350_000; // caracteres base64 por clave (límite de request de Upstash)
 /** Cuánto tiempo se considera fresco el cache antes de recalcular en segundo plano. */

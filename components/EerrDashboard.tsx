@@ -17,6 +17,7 @@ const C_UTIL = "#d97706";
 
 const TG_DIRECTO = "Gasto Directo";
 const TG_INDIRECTO = "Gasto Indirecto";
+const CUENTA_REMUN_DIRECTA = "4510401003"; // REMUNERACIONES DIRECTAS
 const TG_ADMIN = "Gasto Administrativo";
 const TIPOS = [TG_DIRECTO, TG_INDIRECTO, TG_ADMIN];
 const TIPO_COLOR: Record<string, string> = { [TG_DIRECTO]: "#2563eb", [TG_INDIRECTO]: "#d97706", [TG_ADMIN]: "#7c3aed" };
@@ -591,7 +592,24 @@ function Resultado({ c }: { c: Ctx }) {
     { label: "(−) Gasto administrativo", real: admin, ppto: pA, gasto: true },
     { label: "= Estado de resultado empresa", real: empresa, ppto: pEmp, total: true },
   ];
-  const max = Math.max(...filas.map((r) => Math.abs(r.real)), 1);
+  // Desglose como en Power BI: MO directa = cuenta Remuneraciones directas (cualquier tipo de gasto),
+  // Materiales = alias MATERIALES dentro de gasto directo, MO indirecta = alias MANO DE OBRA INDIRECTA.
+  const moDirecta = sum(c.gastos.filter((l) => l.ac === CUENTA_REMUN_DIRECTA), (l) => l.m);
+  const materiales = sum(c.gastos.filter((l) => l.tg === TG_DIRECTO && l.al.toUpperCase() === "MATERIALES"), (l) => l.m);
+  const moIndirecta = sum(c.gastos.filter((l) => l.al.toUpperCase() === "MANO DE OBRA INDIRECTA"), (l) => l.m);
+  const embudo: { label: string; real: number; sub?: boolean; total?: boolean; gasto?: boolean }[] = [
+    { label: "Ingreso", real: ventas },
+    { label: "Gasto directo", real: directo, gasto: true },
+    { label: "Gasto directo (MO directa)", real: moDirecta, sub: true, gasto: true },
+    { label: "Gasto directo (Materiales)", real: materiales, sub: true, gasto: true },
+    { label: "Resultado operacional", real: operacional, total: true },
+    { label: "Gasto indirecto", real: indirecto, gasto: true },
+    { label: "Gasto indirecto (MO indirecta)", real: moIndirecta, sub: true, gasto: true },
+    { label: "Estado de resultado del área", real: estado, total: true },
+    { label: "Gasto administrativo", real: admin, gasto: true },
+    { label: "Estado de resultado empresa", real: empresa, total: true },
+  ];
+  const max = Math.max(...embudo.map((r) => Math.abs(r.real)), 1);
 
   const [q, setQ] = useState("");
   const ql = q.trim().toLowerCase();
@@ -611,15 +629,18 @@ function Resultado({ c }: { c: Ctx }) {
       <div className="rct-grid" style={{ gridTemplateColumns: "1fr 1.3fr" }}>
         <Panel title="Embudo de resultados reales" hint="De las ventas netas al estado de resultado de la empresa.">
           <div className="rct-hbars">
-            {filas.map((r) => (
-              <div className="rct-hbar" key={r.label} title={`${r.label}: ${fmtCLP(r.real)}`}>
-                <div className="lbl">{r.label}</div>
-                <div className="track">
-                  <div style={{ width: `${(Math.abs(r.real) / max) * 100}%`, background: r.gasto ? C_GASTO : r.real < 0 ? C_GASTO : C_VENTA, opacity: r.total ? 1 : 0.75 }} />
+            {embudo.map((r) => {
+              const pct = r.label === "Ingreso" ? "" : ` (${fmtPct(div(r.real, ventas))})`;
+              return (
+                <div className="rct-hbar" key={r.label} style={{ gridTemplateColumns: "minmax(150px, 34%) 1fr 175px" }} title={`${r.label}: ${fmtCLP(r.real)}${pct}`}>
+                  <div className="lbl" style={r.sub ? { paddingLeft: 14, opacity: 0.85 } : undefined}>{r.label}</div>
+                  <div className="track">
+                    <div style={{ width: `${(Math.abs(r.real) / max) * 100}%`, background: r.gasto ? C_GASTO : r.real < 0 ? C_GASTO : C_VENTA, opacity: r.total ? 1 : 0.75 }} />
+                  </div>
+                  <div className="n">{fmtCLP(r.real)}{pct}</div>
                 </div>
-                <div className="n">{fmtCLP(r.real)}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Panel>
         <Panel title="Real vs presupuesto" hint={c.hayPpto ? "Presupuesto del área para el período seleccionado." : "No hay presupuesto para el período o centro de negocio seleccionado."}>
