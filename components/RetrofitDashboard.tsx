@@ -33,6 +33,9 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
   const [vista, setVista] = useState<Vista>("adj");
   const [search, setSearch] = useState("");
   const [conLost, setConLost] = useState(false);
+  const [meses, setMeses] = useState<number[]>([]);
+  const toggleMes = (m: number) => setMeses((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m].sort((a, b) => a - b)));
+  const setTrimestre = (q: number) => setMeses([q * 3 + 1, q * 3 + 2, q * 3 + 3]);
 
   const allDeals = useMemo(() => data?.deals ?? [], [data]);
   const nLost = useMemo(() => allDeals.filter((d) => d.status === "lost").length, [allDeals]);
@@ -63,8 +66,11 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
 
   const inYear = (d: RetrofitDeal) => year === "all" || d.anio === year;
 
-  const adj = useMemo(() => deals.filter((d) => d.estado === "adj" && inYear(d)), [deals, year]); // eslint-disable-line react-hooks/exhaustive-deps
-  const perd = useMemo(() => deals.filter((d) => d.estado === "perd" && inYear(d)), [deals, year]); // eslint-disable-line react-hooks/exhaustive-deps
+  const adjY = useMemo(() => deals.filter((d) => d.estado === "adj" && inYear(d)), [deals, year]); // eslint-disable-line react-hooks/exhaustive-deps
+  const perdY = useMemo(() => deals.filter((d) => d.estado === "perd" && inYear(d)), [deals, year]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inMonths = (d: RetrofitDeal) => meses.length === 0 || (!!d.fecha && meses.includes(Number(d.fecha.slice(5, 7))));
+  const adj = useMemo(() => adjY.filter(inMonths), [adjY, meses]); // eslint-disable-line react-hooks/exhaustive-deps
+  const perd = useMemo(() => perdY.filter(inMonths), [perdY, meses]); // eslint-disable-line react-hooks/exhaustive-deps
   const env = useMemo(() => deals.filter((d) => d.estado === "env"), [deals]);
   const early = useMemo(() => deals.filter((d) => d.estado === "early"), [deals]);
 
@@ -81,7 +87,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
 
   const timeline = useMemo(() => {
     const keys = new Set<string>();
-    [...adj, ...perd].forEach((d) => d.fecha && keys.add(d.fecha.slice(0, 7)));
+    [...adjY, ...perdY].forEach((d) => d.fecha && keys.add(d.fecha.slice(0, 7)));
     let months = [...keys].sort();
     if (year !== "all") months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
     const by = (arr: RetrofitDeal[]) => {
@@ -89,8 +95,8 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
       arr.forEach((d) => d.fecha && m.set(d.fecha.slice(0, 7), (m.get(d.fecha.slice(0, 7)) ?? 0) + d.clp));
       return months.map((x) => conv(m.get(x) ?? 0));
     };
-    return { months, adj: by(adj), perd: by(perd) };
-  }, [adj, perd, year, moneda, uf]); // eslint-disable-line react-hooks/exhaustive-deps
+    return { months, adj: by(adjY), perd: by(perdY) };
+  }, [adjY, perdY, year, moneda, uf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const porCliente = useMemo(() => {
     const m = new Map<string, number>();
@@ -153,7 +159,9 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
   }
 
   const maxConv = Math.max(funnel.total, 1);
-  const yearLabel = year === "all" ? "todos los años" : year;
+  const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const mesesLabel = meses.length === 0 ? "" : ` (${meses.map((m) => MES[m - 1]).join(", ")})`;
+  const yearLabel = (year === "all" ? "todos los años" : year) + mesesLabel;
 
   return (
     <div className="viz-root">
@@ -193,6 +201,21 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
               <button type="button" className={moneda === "CLP" ? "on" : ""} onClick={() => setMoneda("CLP")}>CLP</button>
               <button type="button" className={moneda === "UF" ? "on" : ""} onClick={() => setMoneda("UF")}>UF</button>
             </div>
+          </div>
+        </div>
+
+        <div className="rct-filters" style={{ marginTop: -8, flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Mes de cierre</span>
+          <div className="rct-tabs" style={{ margin: 0, flexWrap: "wrap" }}>
+            <button type="button" className={meses.length === 0 ? "active" : ""} onClick={() => setMeses([])}>Todos</button>
+            {MES.map((n, i) => (
+              <button key={n} type="button" className={meses.includes(i + 1) ? "active" : ""} onClick={() => toggleMes(i + 1)}>{n}</button>
+            ))}
+          </div>
+          <div className="rct-tabs" style={{ margin: 0 }}>
+            {[0, 1, 2, 3].map((q) => (
+              <button key={q} type="button" onClick={() => setTrimestre(q)}>T{q + 1}</button>
+            ))}
           </div>
         </div>
 
