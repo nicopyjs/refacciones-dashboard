@@ -15,19 +15,23 @@ export const metadata: Metadata = {
   description: "Venta, gasto y presupuesto de Refacciones e Instalaciones, réplica del tablero de Power BI",
 };
 
-export default async function RctPage() {
+export default async function RctPage({ searchParams }: { searchParams: Promise<{ refresh?: string }> }) {
   const cookieStore = await cookies();
   if (!isValidSessionValue(cookieStore.get(SESSION_COOKIE)?.value)) {
     redirect("/login?next=/rct");
   }
 
+  let forced = false;
+  const forzar = (await searchParams).refresh !== undefined;
   try {
-    const { data, stale } = await getRctData();
+    const { data, stale } = await getRctData({ force: forzar });
     // Cache vencido: se muestra lo guardado y se recalcula en segundo plano.
     if (stale) after(() => refreshRctData().then(() => undefined).catch(() => undefined));
-    return <RctDashboard data={data} generatedAt={data.generatedAt} stale={stale} error={null} />;
+    if (!forzar) return <RctDashboard data={data} generatedAt={data.generatedAt} stale={stale} error={null} />;
+    forced = true;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido al leer las fuentes.";
     return <RctDashboard data={null} generatedAt={new Date().toISOString()} stale={false} error={message} />;
   }
+  if (forced) redirect("/rct");
 }

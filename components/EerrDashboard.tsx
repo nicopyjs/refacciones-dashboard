@@ -114,6 +114,7 @@ interface Ctx {
 
 export default function EerrDashboard({ data, error, generatedAt, stale }: { data: EerrData | null; error: string | null; generatedAt: string; stale: boolean }) {
   const router = useRouter();
+  const [recalc, setRecalc] = useState(false);
   const [tab, setTab] = useState<TabId>("ingresos");
   const years = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.d.slice(0, 4)))].sort().reverse() : []), [data]);
   const cns = useMemo(() => (data ? [...new Set(data.lines.map((l) => l.cn))].sort() : []), [data]);
@@ -171,6 +172,10 @@ export default function EerrDashboard({ data, error, generatedAt, stale }: { dat
               <span className="dot" />
             </>
           )}
+          <button type="button" onClick={() => { setRecalc(true); window.location.href = "/estado-resultado?refresh=1"; }} disabled={recalc} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", font: "inherit", padding: 0 }}>
+            {recalc ? "Recalculando… (puede tardar ~30 s)" : "Actualizar ahora"}
+          </button>
+          <span className="dot" />
           <button type="button" onClick={logout} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", font: "inherit", padding: 0 }}>
             Cerrar sesión
           </button>
