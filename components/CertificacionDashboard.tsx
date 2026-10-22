@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PASOS, type GrupoPaso, type ProyectoCertificacion, type RechazoSeremi } from "@/lib/parseCertificacion";
+import { PASOS, type GrupoPaso, type PasoKey, type ProyectoCertificacion, type RechazoSeremi } from "@/lib/parseCertificacion";
 import TopNav from "./TopNav";
 import "../app/dashboard.css";
 
@@ -141,7 +141,31 @@ export default function CertificacionDashboard({
     const cartasCompletas = proyectos.filter((p) => p.carta35 === "✓" && p.carta15 === "✓").length;
     const aprobados = proyectos.filter((p) => p.aprobacionSeremi === "✓").length;
     const rechazosActivos = proyectos.filter((p) => p.aprobacionSeremi === "✗").length;
-    return { total, avgPct, cartasCompletas, aprobados, rechazosActivos };
+    const conOperador = proyectos.filter((p) => p.operador === "✓").length;
+
+    // Average days between consecutive dated steps (entries without a real date, e.g. "Fotos", are skipped).
+    const toMs = (s?: string) => {
+      const m = s?.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+      if (!m) return null;
+      const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
+      return Date.UTC(y, Number(m[2]) - 1, Number(m[1]));
+    };
+    const pares: { label: string; a: PasoKey; b: PasoKey }[] = [
+      { label: "1° Visita → Informe", a: "primeraVisita", b: "informe" },
+      { label: "Informe → 2° Visita", a: "informe", b: "segundaVisita" },
+      { label: "2° Visita → Sello Verde", a: "segundaVisita", b: "selloVerde" },
+    ];
+    const tiempos = pares.map(({ label, a, b }) => {
+      const diffs: number[] = [];
+      proyectos.forEach((p) => {
+        const da = toMs(p.fechas[a]);
+        const db = toMs(p.fechas[b]);
+        if (da !== null && db !== null) diffs.push((db - da) / 86400000);
+      });
+      const avg = diffs.length ? Math.round((diffs.reduce((s, d) => s + d, 0) / diffs.length) * 10) / 10 : null;
+      return { label, avg, n: diffs.length };
+    });
+    return { total, avgPct, cartasCompletas, aprobados, rechazosActivos, conOperador, tiempos };
   }, [proyectos]);
 
   const estadoCounts = useMemo(() => {
@@ -246,6 +270,13 @@ export default function CertificacionDashboard({
           <div className="stat-tile"><div className="v" style={{ color: "var(--status-good)" }}>{stats.aprobados}</div><div className="l">Proyectos aprobados</div></div>
           <div className="stat-tile"><div className="v">{stats.cartasCompletas}</div><div className="l">Con cartas 35% y 15% firmadas</div></div>
           <div className="stat-tile"><div className="v" style={{ color: stats.rechazosActivos > 0 ? "var(--status-critical)" : undefined }}>{stats.rechazosActivos}</div><div className="l">Rechazos SEREMI activos</div></div>
+          <div className="stat-tile"><div className="v">{stats.conOperador}</div><div className="l">Con operador de caldera</div></div>
+          {stats.tiempos.map((t) => (
+            <div className="stat-tile" key={t.label} title={`${t.n} proyectos con ambas fechas`}>
+              <div className="v">{t.avg !== null ? `${t.avg} d` : "—"}</div>
+              <div className="l">Tiempo prom. {t.label}</div>
+            </div>
+          ))}
         </div>
 
         <div className="two-col" style={{ marginTop: 16 }}>
