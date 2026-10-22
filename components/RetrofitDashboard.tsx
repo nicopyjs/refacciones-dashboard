@@ -71,7 +71,12 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
   const inMonths = (d: RetrofitDeal) => meses.length === 0 || (!!d.fecha && meses.includes(Number(d.fecha.slice(5, 7))));
   const adj = useMemo(() => adjY.filter(inMonths), [adjY, meses]); // eslint-disable-line react-hooks/exhaustive-deps
   const perd = useMemo(() => perdY.filter(inMonths), [perdY, meses]); // eslint-disable-line react-hooks/exhaustive-deps
-  const env = useMemo(() => deals.filter((d) => d.estado === "env"), [deals]);
+  const envAll = useMemo(() => deals.filter((d) => d.estado === "env"), [deals]);
+  // Con meses elegidos, la cartera enviada se filtra por fecha de envío (y por año si hay uno elegido).
+  const env = useMemo(
+    () => (meses.length === 0 ? envAll : envAll.filter((d) => inMonths(d) && (year === "all" || d.fecha?.slice(0, 4) === year))),
+    [envAll, meses, year], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const early = useMemo(() => deals.filter((d) => d.estado === "early"), [deals]);
 
   const k = useMemo(() => {
@@ -224,7 +229,7 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
           <div className="stat-tile"><div className="v" style={{ color: "var(--status-critical)" }}>{money(k.sumPerd)}</div><div className="l">Perdido {yearLabel} · {perd.length} negocios</div></div>
           <div className="stat-tile"><div className="v">{fmtPct(k.tasa)}</div><div className="l">Tasa de adjudicación (adj. / adj.+perd.)</div></div>
           <div className="stat-tile"><div className="v">{money(k.ticket)}</div><div className="l">Ticket promedio adjudicado</div></div>
-          <div className="stat-tile"><div className="v" style={{ color: "var(--accent)" }}>{money(k.sumEnv)}</div><div className="l">Cartera enviada vigente · {env.length} negocios</div></div>
+          <div className="stat-tile"><div className="v" style={{ color: "var(--accent)" }}>{money(k.sumEnv)}</div><div className="l">{meses.length ? "Cartera enviada en el período" : "Cartera enviada vigente"} · {env.length} negocios</div></div>
         </div>
 
         <section className="summary">
@@ -249,15 +254,15 @@ export default function RetrofitDashboard({ data, error }: { data: RetrofitData 
               return (
                 <div className="bar-row" key={s.id} style={{ gridTemplateColumns: "120px 1fr 120px" }}>
                   <div className="lbl">{s.label}</div>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: `${(arr.length / Math.max(early.length + env.length, 1)) * 100}%`, background: "#64748b" }} /></div>
+                  <div className="bar-track"><div className="bar-fill" style={{ width: `${(arr.length / Math.max(early.length + envAll.length, 1)) * 100}%`, background: "#64748b" }} /></div>
                   <div className="n">{arr.length} · {money(sum(arr))}</div>
                 </div>
               );
             })}
             <div className="bar-row" style={{ gridTemplateColumns: "120px 1fr 120px" }}>
               <div className="lbl">Enviada</div>
-              <div className="bar-track"><div className="bar-fill" style={{ width: `${(env.length / Math.max(early.length + env.length, 1)) * 100}%`, background: C_ENV }} /></div>
-              <div className="n">{env.length} · {money(k.sumEnv)}</div>
+              <div className="bar-track"><div className="bar-fill" style={{ width: `${(envAll.length / Math.max(early.length + envAll.length, 1)) * 100}%`, background: C_ENV }} /></div>
+              <div className="n">{envAll.length} · {money(sum(envAll))}</div>
             </div>
           </section>
 
