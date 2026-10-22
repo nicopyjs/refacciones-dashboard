@@ -21,6 +21,8 @@ export interface ProyectoCertificacion {
   carta15: string | null;
   fechaCarta: string | null;
   pctAvance: number;
+  /** SEREMI gave a final answer (✓ aprobado / ✗ rechazado) and no step is still in process. */
+  terminado: boolean;
   estadoGeneral: string | null;
   /** Date (dd-mm-yyyy) written in the sheet for each step, shown as tooltip. */
   fechas: Partial<Record<PasoKey, string>>;
@@ -126,6 +128,9 @@ export async function getCertificacionData(): Promise<CertificacionData> {
       if (x.fecha) fechas[PASOS[i].key] = x.fecha;
     });
     const completados = checks.filter((v) => v === "✓").length;
+    // A project is finished once SEREMI resolved it (approved or rejected) and nothing is left
+    // "en proceso"; then it is 100% regardless of steps that were never needed (blank / N/A).
+    const terminado = (checks[13] === "✓" || checks[13] === "✗") && !checks.includes("⏳");
 
     proyectos.push({
       proyecto,
@@ -147,7 +152,8 @@ export async function getCertificacionData(): Promise<CertificacionData> {
       carta35: checks[15],
       carta15: checks[16],
       fechaCarta: str(row[18]),
-      pctAvance: completados / CHECK_COLS.length,
+      pctAvance: terminado ? 1 : completados / CHECK_COLS.length,
+      terminado,
       estadoGeneral: str(row[20]),
       fechas,
     });

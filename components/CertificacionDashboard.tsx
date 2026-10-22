@@ -302,9 +302,11 @@ export default function CertificacionDashboard({
               <div className="bar-row" key={p.proyecto}>
                 <div className="lbl">{p.proyecto}</div>
                 <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${p.pctAvance * 100}%`, background: avanceColor(p.pctAvance) }} />
+                  <div className="bar-fill" style={{ width: `${p.pctAvance * 100}%`, background: p.aprobacionSeremi === "✗" ? "var(--status-critical)" : avanceColor(p.pctAvance) }} />
                 </div>
-                <div className="n">{Math.round(p.pctAvance * 100)}%</div>
+                <div className="n" title={p.aprobacionSeremi === "✗" ? "Terminado, rechazado por SEREMI" : undefined}>
+                  {Math.round(p.pctAvance * 100)}%{p.aprobacionSeremi === "✗" ? " ✗" : ""}
+                </div>
               </div>
             ))}
           </div>
@@ -479,7 +481,7 @@ export default function CertificacionDashboard({
         <footer className="note">
           <strong>Sobre esta página:</strong> los datos se leen directamente desde el archivo en Google Drive cada vez
           que alguien la visita. El % de avance se calcula sobre los 17 pasos de documentos SEC, SEREMI y cartas
-          Metrogas del proyecto (✓ completados / 17), por lo que puede diferir del % que muestra la planilla.
+          Metrogas del proyecto (✓ completados / 17); un proyecto con respuesta final de SEREMI (aprobado o rechazado) y sin pasos en proceso se considera terminado (100%). Por eso puede diferir del % que muestra la planilla.
         </footer>
       </div>
     </div>
