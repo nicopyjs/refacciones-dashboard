@@ -9,6 +9,7 @@ import "../app/dashboard.css";
 import "../app/rct/rct.css";
 import "../app/estado-resultado/eerr.css";
 import "../app/flujo-caja/flujo.css";
+import "../app/seguimiento-contratos/seguimiento.css";
 
 const TABS = [
   { id: "seguimiento", label: "Seguimiento" },
@@ -62,18 +63,17 @@ function Firma({ v }: { v: string }) {
 
 function Barra({ v }: { v: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 90 }}>
-      <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--surface-2)", overflow: "hidden" }}>
-        <div style={{ width: pct(v), height: "100%", background: "var(--accent)" }} />
-      </div>
-      <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{pct(v)}</span>
+    <div className="seg-bar">
+      <i><s style={{ width: pct(v) }} /></i>
+      <span>{pct(v)}</span>
     </div>
   );
 }
 
 /* ───────────── Pestañas ───────────── */
-function Seguimiento({ d }: { d: SeguimientoData }) {
+function Seguimiento({ d: data }: { d: SeguimientoData }) {
   const [estado, setEstado] = useState<SegEstado | "Todos">("Todos");
+  const d = data;
   const r = d.resumen;
   const filas = useMemo(() => d.edificios.filter((e) => estado === "Todos" || e.estado === estado), [d.edificios, estado]);
   const opciones: (SegEstado | "Todos")[] = ["Todos", "En curso", "Atrasado", "En rechazo", "Completo"];
@@ -100,49 +100,50 @@ function Seguimiento({ d }: { d: SeguimientoData }) {
 
       <section className="summary">
         <h2>Contratos por edificio</h2>
-        <div className="table-scroll">
-          <table className="data-table flujo-table">
+        <div className="seg-table-wrap">
+          <table className="data-table seg-table">
             <thead>
               <tr>
-                <th>Edificio</th>
-                <th>Comuna</th>
-                <th>Código prospecto</th>
-                <th>Inicio</th>
+                <th className="seg-sticky">Edificio</th>
                 <th>Etapa actual</th>
                 <th>Área</th>
                 <th>Avance</th>
-                <th>Último mov.</th>
-                <th style={{ textAlign: "right" }}>Días</th>
                 <th>Estado</th>
-                <th>Contrato obra</th>
-                <th>Contrato mant.</th>
+                <th className="seg-num">Días</th>
+                <th>Último mov.</th>
+                <th>Inicio</th>
+                <th className="seg-center">Contrato obra</th>
+                <th className="seg-center">Contrato mant.</th>
                 <th>Siguiente paso</th>
                 <th>Responsable NEB</th>
+                <th>Código prospecto</th>
                 <th>Observaciones</th>
               </tr>
             </thead>
             <tbody>
               {filas.map((e) => (
                 <tr key={e.n}>
-                  <td title={e.direccion}>{e.edificio}</td>
-                  <td>{e.comuna || "–"}</td>
-                  <td>{e.prospecto || "–"}</td>
-                  <td>{fecha(e.inicio)}</td>
-                  <td>{e.etapa ? `${e.paso}. ${e.etapa}` : "–"}</td>
+                  <td className="seg-sticky">
+                    <div className="seg-edif">{e.edificio}</div>
+                    <div className="seg-sub">{[e.comuna, e.direccion && e.direccion !== e.edificio ? e.direccion : ""].filter(Boolean).join(" · ")}</div>
+                  </td>
+                  <td className="seg-etapa">{e.etapa ? <><b>{e.paso}</b>{e.etapa}</> : "–"}</td>
                   <td>{e.area || "–"}</td>
                   <td><Barra v={e.avance} /></td>
-                  <td>{fecha(e.ultimoMov)}</td>
-                  <td style={{ textAlign: "right" }}>{e.dias ?? "–"}</td>
                   <td><EstadoBadge estado={e.estado} /></td>
-                  <td><Firma v={e.contratoObra} /></td>
-                  <td><Firma v={e.contratoMant} /></td>
+                  <td className={`seg-num seg-dias${e.dias != null && e.dias > data.diasMaxEtapa ? " alto" : ""}`}>{e.dias ?? "–"}</td>
+                  <td>{fecha(e.ultimoMov)}</td>
+                  <td>{fecha(e.inicio)}</td>
+                  <td className="seg-center"><Firma v={e.contratoObra} /></td>
+                  <td className="seg-center"><Firma v={e.contratoMant} /></td>
                   <td>{e.siguiente || "–"}</td>
                   <td>{e.responsable || "–"}</td>
-                  <td style={{ whiteSpace: "normal", minWidth: 220 }}>{e.observaciones || "–"}</td>
+                  <td className="seg-codigo" title={e.prospecto}>{e.prospecto || "–"}</td>
+                  <td className="seg-obs">{e.observaciones || <span className="seg-muted">–</span>}</td>
                 </tr>
               ))}
               {filas.length === 0 && (
-                <tr><td colSpan={15} style={{ textAlign: "center" }}>Sin edificios con este estado</td></tr>
+                <tr><td colSpan={14} className="seg-center seg-muted">Sin edificios con este estado</td></tr>
               )}
             </tbody>
           </table>
