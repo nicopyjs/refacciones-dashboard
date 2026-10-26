@@ -14,9 +14,9 @@ table.data-table.seg-table { border-collapse: separate; border-spacing: 0; font-
 .seg-table tbody tr:last-child td { border-bottom: none; }
 
 /* Fondos opacos: las filas alternas y el hover de data-table son translúcidos y dejaban ver lo que pasa por debajo. */
-.seg-table tbody td { background: var(--surface-1); }
-.seg-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--muted) 4%, var(--surface-1)); }
-.seg-table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 8%, var(--surface-1)); }
+table.data-table.seg-table tbody tr td { background: var(--surface-1); }
+table.data-table.seg-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--muted) 4%, var(--surface-1)); }
+table.data-table.seg-table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 8%, var(--surface-1)); }
 
 .seg-table th.seg-sticky,
 .seg-table td.seg-sticky {
