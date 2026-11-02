@@ -37,10 +37,24 @@ const hoyISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-const nuevoEstado = (): CalcState => {
+const nuevoEstado = (codigo = ""): CalcState => {
   const s = estadoInicial();
-  return { ...s, doc: { ...s.doc, fecha: hoyISO() } };
+  return { ...s, doc: { ...s.doc, fecha: hoyISO(), codigo } };
 };
+
+/** Código de presupuesto que sigue en el correlativo compartido (null si no se pudo consultar). */
+async function pedirSiguiente(registrar?: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/presupuestos", registrar
+      ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ codigo: registrar }) }
+      : { cache: "no-store" });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { siguiente?: string };
+    return typeof j.siguiente === "string" ? j.siguiente : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Número editable: se formatea con separador de miles al salir del campo y acepta coma o punto decimal. */
 function NumInput({
@@ -137,6 +151,7 @@ export default function CalculadoraPresupuestosDashboard() {
   const [copiado, setCopiado] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [errorPdf, setErrorPdf] = useState<string | null>(null);
+  const [siguiente, setSiguiente] = useState<string | null>(null);
   const cargado = useRef(false);
 
   // Se recuerda el último presupuesto en este navegador.
@@ -153,6 +168,12 @@ export default function CalculadoraPresupuestosDashboard() {
     }
     setS(inicial);
     cargado.current = true;
+
+    // Un presupuesto nuevo (sin código) parte con el próximo número del correlativo.
+    pedirSiguiente().then((sig) => {
+      setSiguiente(sig);
+      if (sig) setS((x) => (x.doc.codigo.trim() ? x : { ...x, doc: { ...x.doc, codigo: sig } }));
+    });
   }, []);
 
   useEffect(() => {
@@ -193,6 +214,9 @@ export default function CalculadoraPresupuestosDashboard() {
     try {
       const { descargarPresupuestoPdf } = await import("@/lib/presupuestoPdf");
       await descargarPresupuestoPdf(s);
+      // Con el PDF emitido, el código queda usado y el siguiente presupuesto será el número que sigue.
+      const sig = await pedirSiguiente(s.doc.codigo.trim());
+      if (sig) setSiguiente(sig);
     } catch (e) {
       setErrorPdf(e instanceof Error ? e.message : "No se pudo generar el PDF.");
     } finally {
@@ -395,7 +419,13 @@ export default function CalculadoraPresupuestosDashboard() {
       <Card title="Datos del presupuesto" hint="Aparecen en el encabezado y en la ficha del cliente.">
         <div className="calc-form">
           <Campo label="Código del presupuesto">
-            <input className="calc-input" placeholder="PST-0000-2026" value={d.codigo} onChange={(e) => setDoc({ codigo: e.target.value })} />
+            <input className="calc-input" placeholder="PSCA-00" value={d.codigo} onChange={(e) => setDoc({ codigo: e.target.value })} />
+            {siguiente && d.codigo.trim() !== siguiente && (
+              <div className="calc-sugerido">
+                Siguiente número: <b>{siguiente}</b>{" "}
+                <button type="button" className="calc-link has" onClick={() => setDoc({ codigo: siguiente })}>Usar</button>
+              </div>
+            )}
           </Campo>
           <Campo label="Fecha de emisión">
             <input className="calc-input" type="date" value={d.fecha} onChange={(e) => setDoc({ fecha: e.target.value })} />
@@ -637,14 +667,16 @@ export default function CalculadoraPresupuestosDashboard() {
                 <button
                   type="button"
                   className="calc-btn"
-                  onClick={() => {
-                    if (window.confirm("¿Limpiar el presupuesto y volver a los valores por defecto?")) {
-                      setS(nuevoEstado());
+                  onClick={async () => {
+                    if (window.confirm("¿Empezar un presupuesto nuevo? Se borra el actual y se asigna el siguiente número.")) {
+                      const sig = (await pedirSiguiente()) ?? siguiente;
+                      setSiguiente(sig);
+                      setS(nuevoEstado(sig ?? ""));
                       setAbiertos(new Set());
                     }
                   }}
                 >
-                  Limpiar
+                  Nuevo presupuesto
                 </button>
               </div>
             </section>

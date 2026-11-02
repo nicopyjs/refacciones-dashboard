@@ -140,3 +140,6 @@ tr.calc-detail td { padding: 0 4px 10px; background: color-mix(in srgb, var(--ac
 .calc-sum { font-size: 12px; font-weight: 600; color: var(--status-good); }
 .calc-sum.mal { color: var(--status-critical); }
 @media (max-width: 520px) { .calc-cuota { grid-template-columns: minmax(0, 1fr) 80px auto; } .calc-cuota-monto { display: none; } }
+
+.calc-sugerido { margin-top: 5px; font-size: 12px; color: var(--text-secondary); }
+.calc-sugerido b { color: var(--text); font-variant-numeric: tabular-nums; }
