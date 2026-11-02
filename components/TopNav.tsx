@@ -9,7 +9,7 @@ const MOSTRAR_INSUMOS = false;
 export default function TopNav({
   active,
 }: {
-  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "rct" | "eerr" | "flujo" | "seguimiento" | "retrofit" | "diagramas";
+  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "rct" | "eerr" | "flujo" | "seguimiento" | "calculadora" | "retrofit" | "diagramas";
 }) {
   return (
     <nav className="top-nav">
@@ -33,6 +33,7 @@ export default function TopNav({
       <Link href="/estado-resultado" className={active === "eerr" ? "active" : ""}>Estado de Resultado RCT</Link>
       <Link href="/flujo-caja" className={active === "flujo" ? "active" : ""}>Flujo de Caja</Link>
       <Link href="/seguimiento-contratos" className={active === "seguimiento" ? "active" : ""}>Seguimiento Contratos</Link>
+      <Link href="/calculadora-presupuestos" className={active === "calculadora" ? "active" : ""}>Calculadora Presupuestos</Link>
       <Link href="/retrofit"className={active === "retrofit" ? "active" : ""}>Retrofit (Pipedrive)</Link>
       <Link href="/diagramas"className={active === "diagramas" ? "active" : ""}>Diagramas</Link>
       <ThemeToggle />
