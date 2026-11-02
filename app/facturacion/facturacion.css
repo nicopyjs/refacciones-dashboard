@@ -6,6 +6,8 @@
   --proy:#8C96A3; --proy-soft:#E9ECEF; --proy-ink:#3E4650;
   --bad:#C0392B; --bad-soft:#FBE3E0;
   --grid:#E6E8E3;
+  --pag:#E8782A; --pag-soft:#FDE6D3; --pag-ink:#8A3F0A;
+  --cpr:#7030A0; --cpr-soft:#EADCF4; --cpr-ink:#4F2278;
   --f-display:var(--font-archivo),"Helvetica Neue",Arial,sans-serif;
   --f-body:var(--font-plex),system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:var(--font-plex-mono),ui-monospace,Menlo,Consolas,monospace;
@@ -18,6 +20,8 @@ html[data-theme="dark"] .rct{
     --esp:#F0C530; --esp-soft:#3A3113; --esp-ink:#F7D774;
     --proy:#7D8794; --proy-soft:#262B32; --proy-ink:#C3CAD2;
     --bad:#F07A6C; --bad-soft:#3B1E1B; --grid:#262A30;
+    --pag:#F29A58; --pag-soft:#3D2514; --pag-ink:#F8BE8F;
+    --cpr:#B57BDB; --cpr-soft:#2F1E3E; --cpr-ink:#D7B5EE;
 }
 .rct, .rct *{box-sizing:border-box}
 .rct{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:0 48px}
@@ -115,3 +119,16 @@ html[data-theme="dark"] .rct{
 .rct .tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .rct footer{margin-top:32px;color:var(--muted);font-size:12px;max-width:80ch}
 @media (prefers-reduced-motion:no-preference){.rct .segbar span{transition:flex-grow .35s ease}}
+
+/* Subpestaña Costo real: naranjo = pagado, morado = proyectado */
+.rct .s-pag{background:var(--pag)}
+.rct .s-cpr{background:var(--cpr)}
+.rct .chip.pag{background:var(--pag-soft);color:var(--pag-ink)}
+.rct .chip.cpr{background:var(--cpr-soft);color:var(--cpr-ink)}
+.rct .chip.pag i{background:var(--pag)}
+.rct .chip.cpr i{background:var(--cpr)}
+.rct td.pag{background:var(--pag-soft);color:var(--pag-ink)}
+.rct td.cpr{background:var(--cpr-soft);color:var(--cpr-ink)}
+.rct td.cmix{background:linear-gradient(90deg,var(--pag-soft),var(--cpr-soft))}
+.rct .subtabs{display:flex;gap:6px;padding-block:14px 0;flex-wrap:wrap}
+.rct .bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;display:flex;min-width:90px}

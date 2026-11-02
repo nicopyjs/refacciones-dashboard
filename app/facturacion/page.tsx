@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { SESSION_COOKIE, isValidSessionValue } from "@/lib/auth";
-import { getFacturacionData } from "@/lib/parseFacturacion";
+import { FACTURACION_FILE_ID, parseFacturacionSheet } from "@/lib/parseFacturacion";
+import { parseCostoRealSheet, type CostoRealData } from "@/lib/parseCostoReal";
+import { loadWorkbook } from "@/lib/driveFile";
 import FacturacionDashboard from "@/components/FacturacionDashboard";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +24,18 @@ export default async function FacturacionPage() {
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   try {
-    const data = await getFacturacionData();
-    return <FacturacionDashboard data={data} todayKey={todayKey} generatedAt={now.toISOString()} error={null} />;
+    const wb = await loadWorkbook(FACTURACION_FILE_ID);
+    const data = parseFacturacionSheet(wb);
+    let costo: CostoRealData | null = null;
+    let costoError: string | null = null;
+    try {
+      costo = parseCostoRealSheet(wb);
+    } catch (err) {
+      costoError = err instanceof Error ? err.message : "Error desconocido al leer Costo real.";
+    }
+    return <FacturacionDashboard data={data} costo={costo} costoError={costoError} todayKey={todayKey} generatedAt={now.toISOString()} error={null} />;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido al leer el archivo.";
-    return <FacturacionDashboard data={null} todayKey={todayKey} generatedAt={now.toISOString()} error={message} />;
+    return <FacturacionDashboard data={null} costo={null} costoError={null} todayKey={todayKey} generatedAt={now.toISOString()} error={message} />;
   }
 }

@@ -43,7 +43,7 @@ export interface FacturacionData {
   rows: { real: number | null; total: number | null; proy: number | null };
 }
 
-const FACTURACION_FILE_ID = process.env.FACTURACION_FILE_ID || "1WBZvbNFgGG_GKONd5p-XCT2oGgBuR7Sy";
+export const FACTURACION_FILE_ID = process.env.FACTURACION_FILE_ID || "1WBZvbNFgGG_GKONd5p-XCT2oGgBuR7Sy";
 
 const GREEN = ["00B050", "92D050"];
 const YELLOW = ["FFFF00"];

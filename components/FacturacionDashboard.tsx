@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archivo, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import type { FacturacionData, FacturacionItem, FacturacionStatus } from "@/lib/parseFacturacion";
+import type { CostoRealData } from "@/lib/parseCostoReal";
+import CostoRealView from "./CostoRealView";
 import TopNav from "./TopNav";
 import "../app/dashboard.css";
 import "../app/facturacion/facturacion.css";
@@ -32,16 +34,21 @@ type Note = { chip: "bad" | "esp" | "fact"; title: string; detail?: string };
 
 export default function FacturacionDashboard({
   data,
+  costo,
+  costoError,
   todayKey,
   generatedAt,
   error,
 }: {
   data: FacturacionData | null;
+  costo: CostoRealData | null;
+  costoError: string | null;
   todayKey: string;
   generatedAt: string;
   error: string | null;
 }) {
   const router = useRouter();
+  const [view, setView] = useState<"fact" | "costo">("fact");
   const [refreshing, setRefreshing] = useState(false);
 
   async function logout() {
@@ -62,7 +69,7 @@ export default function FacturacionDashboard({
           <header className="top">
             <div>
               <div className="brand-eyebrow">NEB Chile · Refacciones RCT</div>
-              <h1>Facturación del mes</h1>
+              <h1>{view === "fact" ? "Facturación del mes" : "Costo real del mes"}</h1>
             </div>
             <div className="controls">
               <button
@@ -76,11 +83,26 @@ export default function FacturacionDashboard({
               <button type="button" className="btn" onClick={logout}>Cerrar sesión</button>
             </div>
           </header>
+          {!error && data && (
+            <div className="tabs subtabs" role="tablist" aria-label="Vista">
+              <button type="button" className="tab" role="tab" aria-selected={view === "fact"} onClick={() => setView("fact")}>Facturación</button>
+              <button type="button" className="tab" role="tab" aria-selected={view === "costo"} onClick={() => setView("costo")}>Costo real</button>
+            </div>
+          )}
           {error || !data ? (
             <div className="source">
               <span className="dot err" />
               <span>{error ?? "No se pudo leer el Excel."}</span>
             </div>
+          ) : view === "costo" ? (
+            costo ? (
+              <CostoRealView data={costo} todayKey={todayKey} generatedAt={generatedAt} />
+            ) : (
+              <div className="source">
+                <span className="dot err" />
+                <span>{costoError ?? "No se pudo leer la pestaña Costo real."}</span>
+              </div>
+            )
           ) : (
             <Board data={data} todayKey={todayKey} generatedAt={generatedAt} />
           )}
