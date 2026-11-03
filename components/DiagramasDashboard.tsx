@@ -7,6 +7,8 @@ import VentaDiagram from "./VentaDiagram";
 import ContratoDiagram from "./ContratoDiagram";
 import CertificacionDiagram from "./CertificacionDiagram";
 import MetrogasDiagram from "./MetrogasDiagram";
+import ProyectosEstadoPanel, { type GuardarInput, type Paso } from "./ProyectosEstadoPanel";
+import { type EtapaKey, type ProyectoEstado } from "@/lib/proyectosEstadoTypes";
 import "../app/dashboard.css";
 import "../app/diagramas/diagramas.css";
 
@@ -177,6 +179,12 @@ const detail: Spec = {
   ],
 };
 
+const pasosDe = (spec: Spec): Paso[] =>
+  spec.nodes.filter((n) => n.num).map((n) => ({ num: n.num!, title: n.title })).sort((a, b) => a.num - b.num);
+const PASOS: Partial<Record<EtapaKey, Paso[]>> = { ingenieria: pasosDe(ingenieria), operaciones: pasosDe(operaciones) };
+/** Tarjeta del flujo general → etapa del proyecto. */
+const ETAPA_DE_NODO: Record<string, EtapaKey> = { v: "venta", c: "contrato", ip: "ingenieria", e: "operaciones", ce: "certificacion", en: "entrega" };
+
 const TITULOS: Record<string, string> = { venta: "Venta", contrato: "Contrato", ingenieria: "Ingeniería y gestión", certificacion: "Certificación", metrogas: "Flujo de oferta Metrogas" };
 
 const STYLES: Record<EdgeStyle, { stroke: string; dash: string; w: number }> = {
@@ -226,7 +234,20 @@ function rounded(pts: Pt[], R = 9): string {
 
 type Drawn = { d: string; style: EdgeStyle; label?: { x: number; y: number; text: string; anchor: "middle" | "start" } };
 
-function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void }) {
+type Marcas = Record<string, ProyectoEstado[]>;
+type MarkProps = { marks?: Marcas; selectedId?: string | null; onPick?: (num: number) => void };
+
+function Marks({ list, selectedId }: { list?: ProyectoEstado[]; selectedId?: string | null }) {
+  if (!list?.length) return null;
+  return (
+    <span className="marks">
+      {list.slice(0, 3).map((p) => <span key={p.id} className={`mk${p.id === selectedId ? " sel" : ""}`} title={p.nombre}>{p.nombre}</span>)}
+      {list.length > 3 && <span className="mk more" title={list.slice(3).map((p) => p.nombre).join(", ")}>+{list.length - 3}</span>}
+    </span>
+  );
+}
+
+function Diagram({ spec, onOpen, marks, selectedId, onPick }: { spec: Spec; onOpen?: (link: string) => void } & MarkProps) {
   const uid = useId().replace(/:/g, "");
   const ref = useRef<HTMLDivElement>(null);
   const [drawn, setDrawn] = useState<Drawn[]>([]);
@@ -319,12 +340,20 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
                   {n.sub && <div className="s">{n.sub}</div>}
                   {n.items && <ul>{n.items.map((i) => <li key={i}>{i}</li>)}</ul>}
                   {n.link && <span className="go">Ver detalle →</span>}
+                  <Marks list={marks?.[n.id]} selectedId={selectedId} />
                 </>
               );
+              const pickable = !!(onPick && selectedId && n.num);
               return n.link && onOpen ? (
                 <button key={n.id} type="button" data-id={n.id} className={`card${n.focus ? " focus" : ""}${n.num ? " numbered" : ""}${n.ghost ? " ghost" : ""}`} style={style} onClick={() => onOpen(n.link!)}>{body}</button>
               ) : (
-                <div key={n.id} data-id={n.id} className={`card${n.focus ? " focus" : ""}${n.num ? " numbered" : ""}${n.ghost ? " ghost" : ""}`} style={style}>{body}</div>
+                <div
+                  key={n.id}
+                  data-id={n.id}
+                  className={`card${n.focus ? " focus" : ""}${n.num ? " numbered" : ""}${n.ghost ? " ghost" : ""}${pickable ? " pick" : ""}`}
+                  style={style}
+                  {...(pickable ? { role: "button", tabIndex: 0, title: "Mover el proyecto seleccionado a este paso", onClick: () => onPick!(n.num!), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick!(n.num!); } } } : {})}
+                >{body}</div>
               );
             })}
           </div>
@@ -353,7 +382,7 @@ function Diagram({ spec, onOpen }: { spec: Spec; onOpen?: (link: string) => void
 }
 
 // Diagrama con scroll propio y botón de pantalla completa (en pantalla completa se mueve arrastrando).
-function FsDiagram({ spec }: { spec: Spec }) {
+function FsDiagram({ spec, marks, selectedId, onPick }: { spec: Spec } & MarkProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -395,7 +424,7 @@ function FsDiagram({ spec }: { spec: Spec }) {
         onPointerUp={() => { drag.current = null; }}
         onPointerCancel={() => { drag.current = null; }}
       >
-        <Diagram spec={spec} />
+        <Diagram spec={spec} marks={marks} selectedId={selectedId} onPick={onPick} />
       </div>
     </div>
   );
@@ -405,7 +434,62 @@ export default function DiagramasDashboard() {
   const router = useRouter();
   const [view, setView] = useState<string>("general");
 
+  const [proyectos, setProyectos] = useState<ProyectoEstado[]>([]);
+  const [sugerencias, setSugerencias] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [peError, setPeError] = useState<string | null>(null);
+
   useEffect(() => { window.scrollTo({ top: 0 }); }, [view]);
+
+  useEffect(() => {
+    fetch("/api/proyectos-estado")
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error ?? "No se pudieron leer los proyectos.");
+        setProyectos(j.proyectos);
+        setSugerencias(j.sugerencias ?? []);
+      })
+      .catch((e) => setPeError(e instanceof Error ? e.message : "No se pudieron leer los proyectos."));
+  }, []);
+
+  async function guardarProyecto(input: GuardarInput) {
+    setPeError(null);
+    try {
+      const r = await fetch("/api/proyectos-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "No se pudo guardar.");
+      const p: ProyectoEstado = j.proyecto;
+      setProyectos((prev) => [...prev.filter((x) => x.id !== p.id), p].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")));
+      setSelectedId(p.id);
+    } catch (e) {
+      setPeError(e instanceof Error ? e.message : "No se pudo guardar.");
+    }
+  }
+
+  async function quitarProyecto(id: string) {
+    setPeError(null);
+    try {
+      const r = await fetch(`/api/proyectos-estado?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? "No se pudo eliminar.");
+      setProyectos((prev) => prev.filter((x) => x.id !== id));
+      setSelectedId((cur) => (cur === id ? null : cur));
+    } catch (e) {
+      setPeError(e instanceof Error ? e.message : "No se pudo eliminar.");
+    }
+  }
+
+  // Proyectos agrupados por la tarjeta del diagrama que se está mostrando.
+  const marks: Marcas = {};
+  if (view === "general") {
+    for (const [nodeId, etapa] of Object.entries(ETAPA_DE_NODO)) marks[nodeId] = proyectos.filter((p) => p.etapa === etapa);
+  } else if (view === "ingenieria" || view === "operaciones") {
+    const spec = view === "ingenieria" ? ingenieria : operaciones;
+    for (const n of spec.nodes) if (n.num) marks[n.id] = proyectos.filter((p) => p.etapa === view && p.paso === n.num);
+  }
+  const selected = proyectos.find((p) => p.id === selectedId);
+  const pickPaso = (etapa: EtapaKey) => (num: number) => { if (selectedId) guardarProyecto({ id: selectedId, etapa, paso: num }); };
+  const aviso = (etapa: string) =>
+    selected && <p className="note pe-pick">Mueve a <b>{selected.nombre}</b> haciendo click en un paso numerado. Ahora está en {selected.etapa === etapa && selected.paso != null ? `el paso ${selected.paso}` : "otra etapa"}.</p>;
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -435,11 +519,13 @@ export default function DiagramasDashboard() {
           <button type="button" className="backbtn" style={{ marginBottom: 0 }} onClick={logout}>Cerrar sesión</button>
         </header>
 
+        <ProyectosEstadoPanel proyectos={proyectos} sugerencias={sugerencias} selectedId={selectedId} onSelect={setSelectedId} onSave={guardarProyecto} onDelete={quitarProyecto} pasos={PASOS} error={peError} />
+
         {view === "general" ? (
           <section className="fade" key="general">
             <h2>Flujo general del área</h2>
             <p className="sub">Después del contrato, Ingeniería y gestión entrega las especificaciones y planos para operaciones. La certificación corre en paralelo a operaciones y tiene su propio diagrama; ambas convergen en la entrega y puesta en régimen. Haz click en una etapa para ver su detalle.</p>
-            <div className="scroller"><Diagram spec={overview} onOpen={setView} /></div>
+            <div className="scroller"><Diagram spec={overview} onOpen={setView} marks={marks} selectedId={selectedId} /></div>
             <hr className="sep" />
             <h2>Otros procesos</h2>
             <p className="sub">Procesos de otras áreas y de Metrogas que se relacionan con Refacciones.</p>
@@ -464,7 +550,8 @@ export default function DiagramasDashboard() {
             <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
             <h2>Ingeniería y gestión</h2>
             <p className="sub">Va del traspaso comercial a la entrega de EE.TT. y planimetría. El envío de la Gantt abre la reunión de inicio, y esta abre la facturación del 50% a Metrogas y de la 1ª cuota a la comunidad. Si la ingeniería de detalle no cumple, vuelve a la visita inicial o a la ingeniería según el tipo de falla. Operaciones parte un mes después de facturar el anticipo.</p>
-            <FsDiagram spec={ingenieria} />
+            {aviso("ingenieria")}
+            <FsDiagram spec={ingenieria} marks={marks} selectedId={selectedId} onPick={pickPaso("ingenieria")} />
           </section>
         ) : view === "metrogas" ? (
           <section className="fade" key="metrogas">
@@ -478,7 +565,8 @@ export default function DiagramasDashboard() {
             <button type="button" className="backbtn" onClick={() => setView("general")}>← Volver al flujo general</button>
             <h2>Operaciones</h2>
             <p className="sub">Tiene dos etapas. La etapa 1, Preparación, parte cuando Ingeniería y gestión entrega las EE.TT. y la planimetría, y deja la obra lista: Gantt de compromiso, visita, temas operativos, pedido de equipos y cubicación. La etapa 2, Ejecución, parte en el inicio del proyecto, corre en paralelo con la certificación y termina con la documentación a la comunidad. Los plazos son de referencia, tomados de la Carta Gantt de Tarapacá.</p>
-            <FsDiagram spec={operaciones} />
+            {aviso("operaciones")}
+            <FsDiagram spec={operaciones} marks={marks} selectedId={selectedId} onPick={pickPaso("operaciones")} />
           </section>
         ) : view === "certificacion" ? (
           <section className="fade" key="certificacion">
