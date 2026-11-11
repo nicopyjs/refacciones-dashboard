@@ -204,8 +204,9 @@ function Row({ i }: { i: Item }) {
   return (
     <div className="row">
       <div>
+        <div className="ctag">{i.concept}</div>
         <div className="p">{i.name}</div>
-        <div className="c">{i.code ? `${i.code} · ` : ""}{i.concept} · celda {i.cell}</div>
+        <div className="c">{i.code ? `${i.code} · ` : ""}celda {i.cell}</div>
       </div>
       <div className="a num">{clp(i.amount)}</div>
     </div>
@@ -255,8 +256,9 @@ function Buscar({ items, sel }: { items: Item[]; sel: string }) {
           {groups.length ? groups.map((g, n) => (
             <div className="row" key={n}>
               <div>
+                <div className="ctag">{g.concept}</div>
                 <div className="p">{g.name}</div>
-                <div className="c">{g.code ? `${g.code} · ` : ""}{g.concept} · {g.months.join(", ")} · celdas {g.cells.join(", ")}</div>
+                <div className="c">{g.code ? `${g.code} · ` : ""}{g.months.join(", ")} · celdas {g.cells.join(", ")}</div>
               </div>
               <div className="a num">{clp(g.amount)}</div>
             </div>

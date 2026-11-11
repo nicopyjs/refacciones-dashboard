@@ -67,6 +67,7 @@ html[data-theme="dark"] .rct{
 .rct .chip.proy{background:var(--proy-soft);color:var(--proy-ink)}
 .rct .chip.bad{background:var(--bad-soft);color:var(--bad)}
 .rct .chip i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.rct .ctag{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:2px}
 .rct .chip.fact i{background:var(--fact)}
 .rct .chip.esp i{background:var(--esp)}
 .rct .chip.proy i{background:var(--proy)}
