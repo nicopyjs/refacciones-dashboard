@@ -136,6 +136,16 @@ function Board({ data, todayKey, generatedAt }: { data: FacturacionData; todayKe
   const mItems = items.filter((i) => i.month === sel);
   const count = (s: FacturacionStatus) => mItems.filter((i) => i.status === s).length;
 
+  const byConcept = Object.values(
+    mItems.reduce<Record<string, { concept: string; total: number; fact: number; n: number }>>((g, i) => {
+      const e = (g[i.concept] ??= { concept: i.concept, total: 0, fact: 0, n: 0 });
+      e.total += i.amount;
+      if (i.status === "fact") e.fact += i.amount;
+      e.n++;
+      return g;
+    }, {})
+  ).sort((x, y) => y.total - x.total);
+
   const idx = keys.indexOf(sel);
 
   return (
@@ -173,6 +183,18 @@ function Board({ data, todayKey, generatedAt }: { data: FacturacionData; todayKe
           <div className="kpi"><span className="chip proy"><i />Por facturar</span><div className="v num">{mm(a.proy)}</div><div className="who">{count("proy")} ítems · depende de NEB</div></div>
         </div>
       </div>
+
+      {byConcept.length > 0 && (
+        <div className="kpis conc">
+          {byConcept.map((c) => (
+            <div className="kpi" key={c.concept}>
+              <span className="ctag">{c.concept}</span>
+              <div className="v num">{mm(c.total)}</div>
+              <div className="who">{c.n} {c.n === 1 ? "ítem" : "ítems"}{c.fact ? ` · ${mm(c.fact)} facturado` : ""}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Buscar items={items} sel={sel} />
 
