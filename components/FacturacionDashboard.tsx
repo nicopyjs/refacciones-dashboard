@@ -188,7 +188,7 @@ function Board({ data, todayKey, generatedAt }: { data: FacturacionData; todayKe
         <div className="kpis conc">
           {byConcept.map((c) => (
             <div className="kpi" key={c.concept}>
-              <span className="ctag">{c.concept}</span>
+              <span className={ctag(c.concept)}>{c.concept}</span>
               <div className="v num">{mm(c.total)}</div>
               <div className="who">{c.n} {c.n === 1 ? "ítem" : "ítems"}{c.fact ? ` · ${mm(c.fact)} facturado` : ""}</div>
             </div>
@@ -222,11 +222,17 @@ function Board({ data, todayKey, generatedAt }: { data: FacturacionData; todayKe
   );
 }
 
+function ctag(concept: string) {
+  const k = concept.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const t = k.includes("anticipo") ? "ant" : k.includes("certific") ? "cert" : k.includes("cuota") ? "cuo" : k.includes("acta") ? "acta" : "otro";
+  return `ctag ct-${t}`;
+}
+
 function Row({ i }: { i: Item }) {
   return (
     <div className="row">
       <div>
-        <div className="ctag">{i.concept}</div>
+        <div className={ctag(i.concept)}>{i.concept}</div>
         <div className="p">{i.name}</div>
         <div className="c">{i.code ? `${i.code} · ` : ""}celda {i.cell}</div>
       </div>
@@ -278,7 +284,7 @@ function Buscar({ items, sel }: { items: Item[]; sel: string }) {
           {groups.length ? groups.map((g, n) => (
             <div className="row" key={n}>
               <div>
-                <div className="ctag">{g.concept}</div>
+                <div className={ctag(g.concept)}>{g.concept}</div>
                 <div className="p">{g.name}</div>
                 <div className="c">{g.code ? `${g.code} · ` : ""}{g.months.join(", ")} · celdas {g.cells.join(", ")}</div>
               </div>
