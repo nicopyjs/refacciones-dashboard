@@ -8,6 +8,7 @@
   --grid:#E6E8E3;
   --pag:#E8782A; --pag-soft:#FDE6D3; --pag-ink:#8A3F0A;
   --cpr:#7030A0; --cpr-soft:#EADCF4; --cpr-ink:#4F2278;
+  --ind:#2F6FA8; --ind-soft:#DCEAF6; --ind-ink:#1D4B77;
   --f-display:var(--font-archivo),"Helvetica Neue",Arial,sans-serif;
   --f-body:var(--font-plex),system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:var(--font-plex-mono),ui-monospace,Menlo,Consolas,monospace;
@@ -22,6 +23,7 @@ html[data-theme="dark"] .rct{
     --bad:#F07A6C; --bad-soft:#3B1E1B; --grid:#262A30;
     --pag:#F29A58; --pag-soft:#3D2514; --pag-ink:#F8BE8F;
     --cpr:#B57BDB; --cpr-soft:#2F1E3E; --cpr-ink:#D7B5EE;
+    --ind:#6AA6DB; --ind-soft:#16283A; --ind-ink:#A9CDEE;
 }
 .rct, .rct *{box-sizing:border-box}
 .rct{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:0 48px}
@@ -139,3 +141,21 @@ html[data-theme="dark"] .rct{
 .rct td.cmix{background:linear-gradient(90deg,var(--pag-soft),var(--cpr-soft))}
 .rct .subtabs{display:flex;gap:6px;padding-block:14px 0;flex-wrap:wrap}
 .rct .bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;display:flex;min-width:90px}
+
+/* Costo indirecto (azul) y Utilidad proyectada */
+.rct .s-ind{background:var(--ind)}
+.rct .s-adj{background:var(--proy)}
+.rct .chip.ind{background:var(--ind-soft);color:var(--ind-ink)}
+.rct .chip.ind i{background:var(--ind)}
+.rct td.ind{background:var(--ind-soft);color:var(--ind-ink)}
+.rct td.pos{color:var(--fact-ink);font-weight:600}
+.rct td.neg{color:var(--bad);font-weight:600}
+.rct .hero.pos{color:var(--fact-ink)}
+.rct .hero.neg{color:var(--bad)}
+.rct .kpi .v.pos{color:var(--fact-ink)}
+.rct .kpi .v.neg{color:var(--bad)}
+.rct tr.qhead td{background:var(--surface-2);font-family:var(--f-display);font-weight:700;letter-spacing:.02em;border-top:2px solid var(--rule)}
+.rct tr.qtot td{font-weight:700;background:var(--surface-2)}
+.rct tr.sub td{color:var(--ink-2);font-size:13px}
+.rct tr.sub td:first-child{padding-left:22px}
+.rct tr.warn td{color:var(--esp-ink);background:var(--esp-soft)}

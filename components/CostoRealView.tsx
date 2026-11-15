@@ -14,10 +14,14 @@ const mm = (n: number) => {
   if (a >= 1e3) return "$" + Math.round(n / 1e3).toLocaleString("es-CL") + " mil";
   return clp(n);
 };
+const r0 = (n: number) => (n ? mm(n) : "·");
 const STATUS_LABEL: Record<CostoStatus, string> = { pag: "pagado", proy: "proyectado" };
 
 type Item = CostoItem & { code: string; name: string };
-type Agg = { pag: number; proy: number };
+// pag/proy = costo directo de los proyectos (por color de letra); ind = "Costo Total indirecto" de la hoja;
+// adj = diferencia entre el costo directo de la hoja (fila "Costo sin Mano de obra") y la suma de los proyectos;
+// total = costo directo de la hoja + indirecto = fila "Costo Total".
+type Agg = { pag: number; proy: number; ind: number; adj: number; total: number };
 
 export default function CostoRealView({ data, todayKey, generatedAt }: { data: CostoRealData; todayKey: string; generatedAt: string }) {
   const keys = useMemo(() => {
@@ -33,14 +37,28 @@ export default function CostoRealView({ data, todayKey, generatedAt }: { data: C
   );
   const agg = useMemo(() => {
     const a: Record<string, Agg> = {};
-    for (const k of data.months) a[k] = { pag: 0, proy: 0 };
+    for (const k of data.months) a[k] = { pag: 0, proy: 0, ind: 0, adj: 0, total: 0 };
     for (const i of items) a[i.month][i.status] += i.amount;
+    for (const k of data.months) {
+      const g = a[k], r = data.resumen[k];
+      const proj = g.pag + g.proy;
+      if (r) {
+        g.ind = r.indirectoTotal;
+        g.adj = r.costoDirecto - proj;
+        if (Math.abs(g.adj) < 1) g.adj = 0;
+        g.total = r.costoTotal;
+      } else {
+        g.total = proj;
+      }
+    }
     return a;
   }, [data, items]);
 
-  const a = agg[sel] ?? { pag: 0, proy: 0 };
-  const tot = a.pag + a.proy;
-  const pct = tot ? Math.round((a.pag / tot) * 100) : 0;
+  const a = agg[sel] ?? { pag: 0, proy: 0, ind: 0, adj: 0, total: 0 };
+  const tot = a.total;
+  const directo = a.pag + a.proy;
+  const hasResumen = !!data.resumen[sel];
+  const pct = directo ? Math.round((a.pag / directo) * 100) : 0;
   const isCur = sel === todayKey, isPast = sel < todayKey;
   const mItems = items.filter((i) => i.month === sel);
   const idx = keys.indexOf(sel);
@@ -82,23 +100,26 @@ export default function CostoRealView({ data, todayKey, generatedAt }: { data: C
           <div className="label">Costo total {mName(sel)}</div>
           <div className="hero num">{mm(tot)}</div>
           <div className="sub">
-            {tot ? `${pct}% ya pagado · ${isCur ? "mes en curso" : isPast ? "mes cerrado" : "mes futuro"}` : "Sin costos este mes"}
+            {tot
+              ? `Directo ${mm(a.pag + a.proy + a.adj)} + indirecto ${mm(a.ind)} · ${pct}% del directo ya pagado · ${isCur ? "mes en curso" : isPast ? "mes cerrado" : "mes futuro"}`
+              : "Sin costos este mes"}
           </div>
           <div className="segbar" aria-hidden="true">
-            {(["pag", "proy"] as const).map((s) => (
-              <span key={s} className={s === "pag" ? "s-pag" : "s-cpr"} hidden={!a[s]} style={{ flexGrow: a[s], flexBasis: 0 }} />
+            {(["pag", "proy", "adj", "ind"] as const).map((s) => (
+              <span key={s} className={s === "pag" ? "s-pag" : s === "proy" ? "s-cpr" : s === "adj" ? "s-adj" : "s-ind"} hidden={!(a[s] > 0)} style={{ flexGrow: a[s], flexBasis: 0 }} />
             ))}
           </div>
         </div>
         <div className="kpis">
           <div className="kpi"><span className="chip pag"><i />Pagado</span><div className="v num">{mm(a.pag)}</div><div className="who">{mItems.filter((i) => i.status === "pag").length} ítems · letra naranja</div></div>
           <div className="kpi"><span className="chip cpr"><i />Proyectado</span><div className="v num">{mm(a.proy)}</div><div className="who">{mItems.filter((i) => i.status === "proy").length} ítems · letra morada</div></div>
+          <div className="kpi"><span className="chip ind"><i />Costo total indirecto</span><div className="v num">{hasResumen ? mm(a.ind) : "·"}</div><div className="who">{hasResumen ? "indirectos + otros indirectos" : "sin dato en la hoja"}</div></div>
         </div>
       </div>
 
       <section>
         <h2>Por tipo de costo</h2>
-        <p className="h2sub">Cómo se reparte {mName(sel)} entre materiales, mano de obra, certificación y obras civiles.</p>
+        <p className="h2sub">Cómo se reparte {mName(sel)} entre materiales, mano de obra, certificación y obras civiles, más el costo indirecto hasta llegar al costo total.</p>
         <div className="scroll">
           <table>
             <thead><tr><th>Tipo</th><th>Pagado</th><th>Proyectado</th><th>Total</th></tr></thead>
@@ -111,7 +132,20 @@ export default function CostoRealView({ data, todayKey, generatedAt }: { data: C
                   <td className="num">{r.pag + r.proy ? mm(r.pag + r.proy) : "·"}</td>
                 </tr>
               ))}
-              <tr className="tot"><td>Total</td><td className="num">{mm(a.pag)}</td><td className="num">{mm(a.proy)}</td><td className="num">{mm(tot)}</td></tr>
+              <tr className="tot"><td>Costo directo (proyectos)</td><td className="num">{mm(a.pag)}</td><td className="num">{mm(a.proy)}</td><td className="num">{mm(directo)}</td></tr>
+              {a.adj !== 0 && (
+                <tr className="warn" title="El costo directo de la hoja (fila Costo sin Mano de obra) no coincide con la suma de los proyectos: revisar las fórmulas de las filas 229-232 de Costo real, o el Ajuste de la fila 226.">
+                  <td>Diferencia con la hoja</td><td className="num">·</td><td className="num">·</td><td className="num">{mm(a.adj)}</td>
+                </tr>
+              )}
+              {hasResumen && (
+                <>
+                  <tr className="sub"><td>Costo indirectos</td><td className="num">·</td><td className="num">·</td><td className="num">{r0(data.resumen[sel].indirectos)}</td></tr>
+                  <tr className="sub"><td>Otros indirectos</td><td className="num">·</td><td className="num">·</td><td className="num">{r0(data.resumen[sel].otrosIndirectos)}</td></tr>
+                  <tr><td>Costo total indirecto</td><td className="num">·</td><td className="num">·</td><td className={`num ${a.ind ? "ind" : ""}`}>{mm(a.ind)}</td></tr>
+                </>
+              )}
+              <tr className="tot"><td>Costo total</td><td className="num">{mm(a.pag)}</td><td className="num">{mm(a.proy)}</td><td className="num">{mm(tot)}</td></tr>
             </tbody>
           </table>
         </div>
@@ -119,11 +153,12 @@ export default function CostoRealView({ data, todayKey, generatedAt }: { data: C
 
       <section>
         <h2>Cómo vienen los meses</h2>
-        <p className="h2sub">Costo mensual: naranjo lo ya pagado, morado lo proyectado. La franja amarilla marca el mes seleccionado.</p>
+        <p className="h2sub">Costo total mensual: naranjo lo ya pagado, morado lo proyectado, azul el costo indirecto. La franja amarilla marca el mes seleccionado.</p>
         <div className="panel">
           <div className="legend">
             <span><i className="s-pag" />Pagado</span>
             <span><i className="s-cpr" />Proyectado</span>
+            <span><i className="s-ind" />Indirecto</span>
           </div>
           <Chart months={keys} agg={agg} sel={sel} onSelect={setSel} />
         </div>
@@ -151,7 +186,7 @@ export default function CostoRealView({ data, todayKey, generatedAt }: { data: C
       <Presupuesto data={data} />
 
       <footer>
-        Fuente: pestaña &quot;Costo real&quot; de PROYECCION REFACCION.xlsx (Google Drive). Letra naranja = costo ya pagado, letra morada = costo futuro o proyectado. Los montos de 2025 con letra negra se cuentan como pagados.
+        Fuente: pestaña &quot;Costo real&quot; de PROYECCION REFACCION.xlsx (Google Drive). Letra naranja = costo ya pagado, letra morada = costo futuro o proyectado. Costo total = costo directo de la hoja + Costo Total indirecto (fila 244 de la hoja). Los montos de 2025 con letra negra se cuentan como pagados.
       </footer>
     </>
   );
@@ -161,7 +196,8 @@ function Chart({ months, agg, sel, onSelect }: { months: string[]; agg: Record<s
   const [tip, setTip] = useState<{ k: string; x: number; y: number } | null>(null);
   const keys = months.filter((k) => k >= "2025-01");
   const W = 1000, H = 340, L = 64, R = 12, T = 16, B = 40;
-  const max = Math.max(1, ...keys.map((k) => agg[k].pag + agg[k].proy));
+  const stackOf = (k: string) => agg[k].pag + agg[k].proy + Math.max(0, agg[k].adj) + agg[k].ind;
+  const max = Math.max(1, ...keys.map(stackOf));
   const step = [10e6, 20e6, 25e6, 50e6, 100e6].find((s) => max / s <= 6) || 50e6;
   const top = Math.ceil(max / step) * step;
   const y = (v: number) => T + (H - T - B) * (1 - v / top);
@@ -172,7 +208,7 @@ function Chart({ months, agg, sel, onSelect }: { months: string[]; agg: Record<s
 
   return (
     <div className="chartbox">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Costo mensual apilado por estado">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Costo total mensual apilado: pagado, proyectado e indirecto">
         {ticks.map((v) => (
           <g key={v}>
             <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--grid)" strokeWidth={1} />
@@ -182,7 +218,7 @@ function Chart({ months, agg, sel, onSelect }: { months: string[]; agg: Record<s
         {keys.map((k, idx) => {
           const ag = agg[k], x = L + idx * bw, w = Math.max(6, bw * 0.62), cx = x + (bw - w) / 2;
           let base = 0;
-          const segs = ([["pag", "var(--pag)"], ["proy", "var(--cpr)"]] as const).filter(([s]) => ag[s] > 0);
+          const segs = ([["pag", "var(--pag)"], ["proy", "var(--cpr)"], ["adj", "var(--proy)"], ["ind", "var(--ind)"]] as const).filter(([s]) => ag[s] > 0);
           return (
             <g key={k}>
               {k === sel && <rect x={x + 1} y={T - 6} width={bw - 2} height={H - T - B + 6} fill="var(--brand)" opacity={0.16} rx={4} />}
@@ -211,7 +247,7 @@ function Chart({ months, agg, sel, onSelect }: { months: string[]; agg: Record<s
       {tip && tipAgg && (
         <div className="tip" style={{ left: tip.x, top: tip.y }}>
           <b>{mName(tip.k)}</b>
-          {([["Pagado", tipAgg.pag], ["Proyectado", tipAgg.proy], ["Total", tipAgg.pag + tipAgg.proy]] as const).map(([n, v]) => (
+          {([["Pagado", tipAgg.pag], ["Proyectado", tipAgg.proy], ["Dif. con la hoja", tipAgg.adj], ["Indirecto", tipAgg.ind], ["Costo total", tipAgg.total]] as const).filter(([n, v]) => v !== 0 || n === "Costo total").map(([n, v]) => (
             <div className="l num" key={n}><span>{n}</span><span>{clp(v)}</span></div>
           ))}
         </div>

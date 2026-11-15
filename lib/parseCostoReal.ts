@@ -25,10 +25,25 @@ export interface CostoProject {
   items: CostoItem[];
 }
 
+// Resumen mensual del final de la hoja (filas "Facturación" … "Utilidad acumulada").
+// Se ubican por la etiqueta de la columna A, no por número de fila, porque la hoja se edita seguido.
+export interface CostoResumenMes {
+  facturacion: number;
+  costoDirecto: number; // fila "Costo sin Mano de obra" (= TOTAL de los proyectos, incluye mano de obra)
+  indirectos: number; // fila "Costo Indirectos"
+  otrosIndirectos: number; // fila "Otros indirectos"
+  indirectoTotal: number; // fila "Costo Total indirecto" = indirectos + otros
+  costoTotal: number; // directo + indirecto total (la hoja lo trae en "Costo Total")
+  utilidad: number; // facturación − costo total
+  hojaCostoTotal: number | null; // lo que dice la hoja, para validar
+  hojaUtilidad: number | null;
+}
+
 export interface CostoRealData {
   sheet: string;
   months: string[];
   projects: CostoProject[];
+  resumen: Record<string, CostoResumenMes>; // solo meses con algún dato en el resumen
 }
 
 const PURPLE = "7030A0";
@@ -117,5 +132,61 @@ export function parseCostoRealSheet(wb: ExcelJS.Workbook): CostoRealData {
     }
   }
 
-  return { sheet: ws.name, months: months.map((m) => m.key), projects };
+  return { sheet: ws.name, months: months.map((m) => m.key), projects, resumen: parseResumen(months, lastRow, txt, val) };
+}
+
+const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+function parseResumen(
+  months: { col: number; key: string }[],
+  lastRow: number,
+  txt: (r: number, c: number) => string,
+  val: (r: number, c: number) => unknown
+): Record<string, CostoResumenMes> {
+  // El resumen parte en la fila "Ajuste"; antes de eso hay filas con nombres parecidos por proyecto.
+  let start = -1;
+  for (let r = 1; r < lastRow; r++) if (/^ajuste/i.test(txt(r, 0))) { start = r; break; }
+  if (start < 0) return {};
+
+  const rows: Record<string, number> = {};
+  const set = (k: string, r: number) => { if (!(k in rows)) rows[k] = r; };
+  for (let r = start; r < lastRow; r++) {
+    const l = norm(txt(r, 0));
+    if (!l) continue;
+    if (l === "facturacion") set("fact", r);
+    else if (l.startsWith("costo sin mano de obra")) set("directo", r);
+    else if (l.startsWith("costo ind")) set("ind", r); // la hoja escribe "Costo Indrectos"
+    else if (l.startsWith("otros indirectos")) set("otros", r);
+    else if (l.startsWith("costo total indirecto")) set("indTot", r);
+    else if (l === "costo total") set("total", r);
+    else if (l === "utilidad") set("util", r);
+  }
+  if (rows.fact == null && rows.directo == null) return {};
+
+  const get = (k: string, c: number): number | null => {
+    const r = rows[k];
+    if (r == null) return null;
+    const v = val(r, c);
+    return typeof v === "number" && isFinite(v) ? v : null;
+  };
+
+  const out: Record<string, CostoResumenMes> = {};
+  for (const mo of months) {
+    const fact = get("fact", mo.col), dir = get("directo", mo.col), ind = get("ind", mo.col), otros = get("otros", mo.col), indTot = get("indTot", mo.col);
+    if (fact == null && dir == null && ind == null && otros == null && indTot == null) continue;
+    const indirectoTotal = indTot ?? (ind ?? 0) + (otros ?? 0);
+    const costoTotal = (dir ?? 0) + indirectoTotal;
+    out[mo.key] = {
+      facturacion: fact ?? 0,
+      costoDirecto: dir ?? 0,
+      indirectos: ind ?? 0,
+      otrosIndirectos: otros ?? 0,
+      indirectoTotal,
+      costoTotal,
+      utilidad: (fact ?? 0) - costoTotal,
+      hojaCostoTotal: get("total", mo.col),
+      hojaUtilidad: get("util", mo.col),
+    };
+  }
+  return out;
 }
