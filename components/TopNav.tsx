@@ -9,7 +9,7 @@ const MOSTRAR_INSUMOS = false;
 export default function TopNav({
   active,
 }: {
-  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "insumos" | "facturacion" | "rct" | "eerr" | "flujo" | "seguimiento" | "calculadora" | "retrofit" | "diagramas";
+  active: "calendario" | "gestion" | "observaciones" | "certificacion" | "ingenieria" | "insumos" | "facturacion" | "rct" | "eerr" | "flujo" | "seguimiento" | "calculadora" | "retrofit" | "diagramas";
 }) {
   return (
     <nav className="top-nav">
@@ -25,6 +25,7 @@ export default function TopNav({
       )}
       <Link href="/observaciones" className={active === "observaciones" ? "active" : ""}>Seguimiento de Tareas</Link>
       <Link href="/certificacion" className={active === "certificacion" ? "active" : ""}>Certificación</Link>
+      <Link href="/ingenieria-entrega" className={active === "ingenieria" ? "active" : ""}>Ingeniería y Entrega</Link>
       {MOSTRAR_INSUMOS && (
         <Link href="/insumos" className={active === "insumos" ? "active" : ""}>Insumos</Link>
       )}

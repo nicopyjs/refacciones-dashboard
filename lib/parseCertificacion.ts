@@ -81,7 +81,7 @@ const CERTIFICACION_FILE_ID = process.env.CERTIFICACION_FILE_ID || "1uLIaDCKqi2z
 // shared-formula rows).
 const CHECK_COLS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
-function str(v: unknown): string | null {
+export function str(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   const s = String(v).trim();
   if (!s) return null;
@@ -89,14 +89,14 @@ function str(v: unknown): string | null {
   return /^x$/i.test(s) ? "✗" : s;
 }
 
-function fmtDate(d: Date): string {
+export function fmtDate(d: Date): string {
   const dd = String(d.getUTCDate()).padStart(2, "0");
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${dd}-${mm}-${d.getUTCFullYear()}`;
 }
 
 /** A step cell holding a date (or "Fotos") means the step is done → "✓", keeping the date as tooltip. */
-function stepValue(v: unknown): { value: string | null; fecha?: string } {
+export function stepValue(v: unknown): { value: string | null; fecha?: string } {
   if (v instanceof Date) return { value: "✓", fecha: fmtDate(v) };
   const s = str(v);
   if (!s) return { value: null };

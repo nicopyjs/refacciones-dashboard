@@ -41,7 +41,7 @@ function estadoChip(v: string | null) {
 
 type Sym = "ok" | "wip" | "bad" | "na" | "pend";
 
-function symKind(v: string | null): Sym {
+export function symKind(v: string | null): Sym {
   if (v === "✓") return "ok";
   if (v === "⏳") return "wip";
   if (v === "✗") return "bad";
@@ -49,7 +49,7 @@ function symKind(v: string | null): Sym {
   return "pend";
 }
 
-function symbolCell(v: string | null, fecha?: string) {
+export function symbolCell(v: string | null, fecha?: string) {
   const k = symKind(v);
   return (
     <td className={`sym sym-${k}`} title={fecha ?? (k === "pend" ? "Pendiente" : undefined)}>
@@ -58,7 +58,7 @@ function symbolCell(v: string | null, fecha?: string) {
   );
 }
 
-function avanceColor(pct: number) {
+export function avanceColor(pct: number) {
   return pct >= 0.85 ? "var(--status-good)" : pct >= 0.4 ? "var(--accent)" : "var(--status-warning)";
 }
 
