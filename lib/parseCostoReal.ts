@@ -48,6 +48,10 @@ export interface CostoRealData {
 
 const PURPLE = "7030A0";
 
+// Fin de los bloques de proyecto = inicio de los totales. La hoja ha traído una fila "Ajuste" antes de
+// "TOTAL" y otras veces no, así que cualquiera de las dos marca el corte.
+const esInicioTotales = (label: string) => /^ajuste/i.test(label) || /^total\s*$/i.test(label);
+
 function categoryOf(s: string): CostoCategory | null {
   const t = s.toLowerCase();
   if (t.startsWith("material")) return "Materiales";
@@ -96,8 +100,10 @@ export function parseCostoRealSheet(wb: ExcelJS.Workbook): CostoRealData {
   let cur: CostoProject | null = null;
   for (let r = 1; r < lastRow; r++) {
     const label = txt(r, 0);
-    if (!label) continue;
-    if (/^ajuste/i.test(label)) break; // desde aquí vienen los totales y el estado de resultado
+    // Una fila en blanco cierra el bloque del proyecto: las filas Materiales/Mano de obra/… que vienen
+    // después sin fila de proyecto arriba son el subtotal por categoría, no un proyecto.
+    if (!label) { cur = null; continue; }
+    if (esInicioTotales(label)) break; // desde aquí vienen los totales y el estado de resultado
     const cat = categoryOf(label);
     // Bloque de costo = fila de proyecto seguida de una línea "Materiales".
     if (!cat) {
@@ -143,9 +149,9 @@ function parseResumen(
   txt: (r: number, c: number) => string,
   val: (r: number, c: number) => unknown
 ): Record<string, CostoResumenMes> {
-  // El resumen parte en la fila "Ajuste"; antes de eso hay filas con nombres parecidos por proyecto.
+  // El resumen parte en la fila "Ajuste" o "TOTAL"; antes de eso hay filas con nombres parecidos por proyecto.
   let start = -1;
-  for (let r = 1; r < lastRow; r++) if (/^ajuste/i.test(txt(r, 0))) { start = r; break; }
+  for (let r = 1; r < lastRow; r++) if (esInicioTotales(txt(r, 0))) { start = r; break; }
   if (start < 0) return {};
 
   const rows: Record<string, number> = {};
@@ -155,9 +161,10 @@ function parseResumen(
     if (!l) continue;
     if (l === "facturacion") set("fact", r);
     else if (l.startsWith("costo sin mano de obra")) set("directo", r);
-    else if (l.startsWith("costo ind")) set("ind", r); // la hoja escribe "Costo Indrectos"
-    else if (l.startsWith("otros indirectos")) set("otros", r);
     else if (l.startsWith("costo total indirecto")) set("indTot", r);
+    // "Costo Indrectos" o "Costo Mano de obra Indrectos" (la hoja escribe mal "indirectos")
+    else if (l.startsWith("costo") && /ind[ie]?rect/.test(l) && !l.startsWith("costo total")) set("ind", r);
+    else if (l.startsWith("otros indirectos")) set("otros", r);
     else if (l === "costo total") set("total", r);
     else if (l === "utilidad") set("util", r);
   }
